@@ -233,3 +233,11 @@ td input, td select { padding: 7px 8px; }
 }
 .grid2 > .seksi { border-top: 0; margin-top: 0; padding-top: 0; }
 .tiket .atas small { color: #fff; opacity: .8; letter-spacing: .08em; }
+
+/* ---------- VIP & grup ---------- */
+.badge.vip { background: #2b2b2b; color: #f2c94c; letter-spacing: .05em; margin-left: 4px; vertical-align: middle; }
+.opsi .ket { color: var(--ink); opacity: .75; }
+.opsi .per-orang { display: block; font-weight: 400; color: var(--muted); font-size: .8rem; }
+.tiket-vip .atas { background: linear-gradient(135deg, #1f1f1f 0%, #3a3326 100%); }
+.tiket-vip .atas small { color: #f2c94c; opacity: 1; }
+.vip-besar { display: inline-block; background: #1f1f1f; color: #f2c94c; font-weight: 800; letter-spacing: .15em; padding: 4px 14px; border-radius: 8px; margin-top: 8px; font-size: 1.1rem; }

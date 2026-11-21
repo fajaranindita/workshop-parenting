@@ -85,7 +85,8 @@
 
     function tampilHasil(r) {
       var p = r.peserta, h;
-      var detail = p ? '<div style="font-size:1.15rem;font-weight:700;margin-top:6px">' + esc(p.nama) + (p.nama_pasangan ? ' & ' + esc(p.nama_pasangan) : '') + '</div>' +
+      var detail = p ? (p.vip ? '<div class="vip-besar">★ VIP ★</div>' : '') + '<div style="font-size:1.15rem;font-weight:700;margin-top:6px">' + esc(p.nama) + '</div>' +
+        (p.anggota && p.anggota.length ? '<div>' + A.labelAnggota(p.orang) + ': ' + esc(A.teksAnggota(p)) + '</div>' : '') +
         '<div>' + esc(p.kode) + ' · ' + esc(p.jenis_nama) + ' · <b>' + p.orang + ' orang</b>' + (p.jumlah_anak ? ' · <b>' + p.jumlah_anak + ' anak dititipkan</b> (usia ' + esc(p.usia_anak) + ')' : '') + '</div>' : '';
       if (r.hasil === 'berhasil') h = '<div class="hasil-scan berhasil"><div class="judul">✔ Check-in berhasil</div>' + detail + '</div>';
       else if (r.hasil === 'sudah') h = '<div class="hasil-scan sudah"><div class="judul">⚠ Sudah check-in</div>' + detail + '<div>pada ' + A.fmtWaktu(p.checkin_waktu) + ' oleh ' + esc(p.checkin_oleh) + '</div></div>';
@@ -129,10 +130,10 @@
       var q = $('#cari').value.toLowerCase().replace(/\s/g, '');
       if (q.length < 2) { $('#hasilCari').innerHTML = '<p class="hint">Ketik minimal 2 huruf.</p>'; return; }
       var hasil = peserta.filter(function (p) {
-        return (p.nama + p.nama_pasangan + p.kode + p.wa).toLowerCase().replace(/\s/g, '').indexOf(q) >= 0;
+        return (p.nama + A.teksAnggota(p) + p.kode + p.wa).toLowerCase().replace(/\s/g, '').indexOf(q) >= 0;
       }).slice(0, 20);
       $('#hasilCari').innerHTML = hasil.length ? hasil.map(function (p) {
-        return '<div class="salin-baris"><div><b>' + esc(p.nama) + '</b>' + (p.nama_pasangan ? ' & ' + esc(p.nama_pasangan) : '') +
+        return '<div class="salin-baris"><div><b>' + esc(p.nama) + '</b>' + A.badgeVip(p) + (p.anggota.length ? '<br><small>' + A.labelAnggota(p.orang) + ': ' + esc(A.teksAnggota(p)) + '</small>' : '') +
           '<br><small>' + esc(p.kode) + ' · ' + esc(p.jenis_nama) + (p.jumlah_anak ? ' · ' + p.jumlah_anak + ' anak' : '') + '</small></div>' +
           (p.status === 'hadir' ? A.badge('hadir') : '<button class="btn kecil" data-kode="' + esc(p.kode) + '">Check-in</button>') + '</div>';
       }).join('') : '<p class="muted">Tidak ditemukan di daftar peserta lunas.</p>';
@@ -143,8 +144,8 @@
     });
 
     $('#btnUnduh').addEventListener('click', function () {
-      var rows = [['kode', 'nama', 'nama_pasangan', 'wa', 'jenis', 'orang', 'jumlah_anak', 'usia_anak', 'status']].concat(
-        peserta.map(function (p) { return [p.kode, p.nama, p.nama_pasangan, p.wa, p.jenis_nama, p.orang, p.jumlah_anak, p.usia_anak, p.status]; }));
+      var rows = [['kode', 'nama', 'anggota_lain', 'vip', 'wa', 'jenis', 'orang', 'jumlah_anak', 'usia_anak', 'status']].concat(
+        peserta.map(function (p) { return [p.kode, p.nama, A.teksAnggota(p), p.vip ? 'VIP' : '', p.wa, p.jenis_nama, p.orang, p.jumlah_anak, p.usia_anak, p.status]; }));
       A.unduh('daftar-peserta-lunas.csv', A.csv(rows));
     });
   })();

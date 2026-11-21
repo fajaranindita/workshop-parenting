@@ -119,7 +119,7 @@
     var daftar = S.peserta.filter(function (p) {
       if (S.filter !== 'semua' && p.status !== S.filter) return false;
       if (!q) return true;
-      return (p.nama + p.nama_pasangan + p.kode + p.wa + p.nominal + p.email).toLowerCase().replace(/[.\s]/g, '').indexOf(q) >= 0;
+      return (p.nama + A.teksAnggota(p) + p.kode + p.wa + p.nominal + p.email).toLowerCase().replace(/[.\s]/g, '').indexOf(q) >= 0;
     }).sort(function (a, b) {
       if (S.filter === 'menunggu_verifikasi') return (a.bukti_waktu || '').localeCompare(b.bukti_waktu || '');
       return (b.dibuat || '').localeCompare(a.dibuat || '');
@@ -127,8 +127,8 @@
 
     $('#tbPeserta').innerHTML = daftar.length ? daftar.map(function (p) {
       var klaim = p.dicek_oleh && p.dicek_oleh !== S.admin.username && p.dicek_waktu && (new Date() - new Date(p.dicek_waktu)) < 600000;
-      return '<tr class="klik" data-kode="' + esc(p.kode) + '"><td><b>' + esc(p.kode) + '</b></td><td>' + esc(p.nama) +
-        (p.nama_pasangan ? '<br><small>& ' + esc(p.nama_pasangan) + '</small>' : '') + '<br><small>' + esc(p.wa) + '</small></td>' +
+      return '<tr class="klik" data-kode="' + esc(p.kode) + '"><td><b>' + esc(p.kode) + '</b>' + A.badgeVip(p) + '</td><td>' + esc(p.nama) +
+        (p.anggota.length ? '<br><small>+ ' + esc(A.teksAnggota(p)) + '</small>' : '') + '<br><small>' + esc(p.wa) + '</small></td>' +
         '<td>' + esc(p.jenis_nama) + (p.jumlah_anak ? '<br><small>+ ' + p.jumlah_anak + ' anak</small>' : '') + '</td>' +
         '<td class="angka">' + A.rupiah(p.nominal) + '</td><td>' + A.badge(p.status) + (klaim ? '<br><small>🔎 dicek ' + esc(p.dicek_oleh) + '</small>' : '') + '</td>' +
         '<td>' + (p.ada_bukti ? '📎' : '') + '</td><td><small>' + A.fmtWaktu(p.dibuat) + '</small></td></tr>';
@@ -146,8 +146,10 @@
     if (tr) bukaDetail(tr.getAttribute('data-kode'));
   });
   $('#btnCsv').addEventListener('click', function () {
-    var kol = ['kode', 'status', 'nama', 'nama_pasangan', 'wa', 'email', 'jenis_nama', 'orang', 'jumlah_anak', 'usia_anak', 'harga_tiket', 'biaya_anak', 'kode_unik', 'nominal', 'dibuat', 'diverifikasi_oleh', 'diverifikasi_waktu', 'checkin_waktu', 'pertanyaan'];
-    var rows = [kol].concat(S.peserta.map(function (p) { return kol.map(function (k) { return p[k]; }); }));
+    var kol = ['kode', 'status', 'vip', 'nama', 'anggota', 'wa', 'email', 'jenis_nama', 'orang', 'jumlah_anak', 'usia_anak', 'harga_tiket', 'biaya_anak', 'kode_unik', 'nominal', 'dibuat', 'diverifikasi_oleh', 'diverifikasi_waktu', 'checkin_waktu', 'pertanyaan'];
+    var rows = [kol].concat(S.peserta.map(function (p) {
+      return kol.map(function (k) { return k === 'anggota' ? A.teksAnggota(p) : k === 'vip' ? (p.vip ? 'VIP' : '') : p[k]; });
+    }));
     A.unduh('peserta-' + new Date().toISOString().slice(0, 10) + '.csv', A.csv(rows));
   });
 
@@ -195,14 +197,14 @@
 
   function renderDetail(p, bukti, peringatan) {
     var koor = S.admin.peran === 'koordinator';
-    var h = '<h2>' + esc(p.nama) + ' ' + A.badge(p.status) + '</h2>';
+    var h = '<h2>' + esc(p.nama) + ' ' + A.badge(p.status) + A.badgeVip(p) + '</h2>';
     if (peringatan) h += '<div class="banner warn">⚠ ' + esc(peringatan) + '</div>';
     h += '<div class="grid2"><div class="seksi"><dl class="dl">';
     h += '<dt>Kode</dt><dd>' + esc(p.kode) + '</dd>';
     h += '<dt>WhatsApp</dt><dd>' + esc(p.wa) + '</dd>';
     if (p.email) h += '<dt>Email</dt><dd>' + esc(p.email) + '</dd>';
     h += '<dt>Tiket</dt><dd>' + esc(p.jenis_nama) + ' (' + p.orang + ' org)</dd>';
-    if (p.nama_pasangan) h += '<dt>Pasangan</dt><dd>' + esc(p.nama_pasangan) + '</dd>';
+    if (p.anggota.length) h += '<dt>' + A.labelAnggota(p.orang) + '</dt><dd>' + esc(A.teksAnggota(p)) + '</dd>';
     if (p.jumlah_anak) h += '<dt>Penitipan</dt><dd>' + p.jumlah_anak + ' anak (usia ' + esc(p.usia_anak) + ')</dd>';
     h += '<dt>Didaftar</dt><dd>' + A.fmtWaktu(p.dibuat) + '</dd>';
     if (p.pertanyaan) h += '<dt>Pertanyaan</dt><dd style="font-weight:400">' + esc(p.pertanyaan) + '</dd>';
@@ -295,11 +297,14 @@
       '<div class="grid2"><div><label>Nama</label><input type="text" id="uNama" value="' + esc(p.nama) + '"></div>' +
       '<div><label>Nomor WA</label><input type="tel" id="uWa" value="' + esc(p.wa) + '"></div>' +
       '<div><label>Email</label><input type="email" id="uEmail" value="' + esc(p.email) + '"></div>' +
-      (p.orang > 1 ? '<div><label>Nama pasangan</label><input type="text" id="uPasangan" value="' + esc(p.nama_pasangan) + '"></div>' : '') +
-      '</div><button class="btn" id="simpanUbah" style="margin-top:14px">Simpan perubahan</button></div>';
+      '</div>' + (p.orang > 1 ? '<label>' + (p.orang === 2 ? 'Nama pasangan' : 'Nama anggota grup (selain penanggung jawab)') + '</label>' +
+        Array.apply(null, Array(p.orang - 1)).map(function (_, i) {
+          return '<input type="text" class="uAnggota" style="margin-bottom:8px" placeholder="' + (p.orang === 2 ? 'Nama pasangan' : 'Anggota ' + (i + 2)) + '" value="' + esc(p.anggota[i] || '') + '">';
+        }).join('') : '') +
+      '<button class="btn" id="simpanUbah" style="margin-top:14px">Simpan perubahan</button></div>';
     $('#simpanUbah').addEventListener('click', function () {
       this.disabled = true;
-      apiA('ubahData', { kode: p.kode, data: { nama: $('#uNama').value, wa: $('#uWa').value, email: $('#uEmail').value, nama_pasangan: $('#uPasangan') ? $('#uPasangan').value : '' } })
+      apiA('ubahData', { kode: p.kode, data: { nama: $('#uNama').value, wa: $('#uWa').value, email: $('#uEmail').value, anggota: $$('.uAnggota').map(function (i) { return i.value; }) } })
         .then(function (r) { A.toast('Data tersimpan.'); perbaruiLokal(r.peserta); bukaDetail(p.kode); })
         .catch(function (e) { A.toast(e.message, true); $('#simpanUbah').disabled = false; });
     });
@@ -494,8 +499,8 @@
 
     h += '<div class="card"><h2>B. Jenis tiket & harga</h2>';
     h += '<div class="grid2"><div>' + f('kapasitas_total', 'Kapasitas total (orang)', 'number', 'min="1"', 'Sudah terdaftar: <b>' + t.orang + ' orang</b>') + '</div><div id="cekKapasitas" style="padding-top:38px"></div></div>';
-    h += '<div class="tabel-wrap" style="margin-top:14px"><table><thead><tr><th>Nama tiket</th><th>Harga normal</th><th>Harga early bird</th><th>Orang/tiket</th><th>Kuota</th><th>Terjual*</th><th>Aktif</th><th></th></tr></thead><tbody id="tbJenis"></tbody></table></div>';
-    h += '<p class="hint">*Termasuk yang masih menunggu pembayaran. Jenis tiket yang sudah ada pendaftarnya tidak bisa dihapus, cukup dinonaktifkan.</p>';
+    h += '<div class="tabel-wrap" style="margin-top:14px"><table><thead><tr><th>Nama tiket &amp; keterangan</th><th>Harga normal</th><th>Harga early bird</th><th>Orang/tiket</th><th>Kuota (tiket)</th><th class="angka">Kursi</th><th>Terjual*</th><th>VIP</th><th>Aktif</th><th></th></tr></thead><tbody id="tbJenis"></tbody></table></div>';
+    h += '<p class="hint">Harga berlaku per tiket. Kursi = kuota × orang per tiket (contoh: tiket Grup 5 orang dengan kuota 20 = 100 kursi). Centang <b>VIP</b> agar tiket ditandai khusus di formulir, e-tiket, dashboard, dan saat check-in.<br>*Termasuk yang masih menunggu pembayaran. Jenis tiket yang sudah ada pendaftarnya tidak bisa dihapus, cukup dinonaktifkan.</p>';
     h += '<button class="btn sekunder kecil" id="tambahJenis">+ Tambah jenis tiket</button></div>';
 
     h += '<div class="card"><h2>C. Penitipan anak</h2>';
@@ -534,7 +539,7 @@
     });
     $('#c_kapasitas_total').addEventListener('input', cekKapasitas);
     $('#tambahJenis').addEventListener('click', function () {
-      S.jenisEdit.push({ id: '', nama: '', harga_normal: 0, harga_eb: 0, orang: 1, kuota: 0, aktif: true, terpakai: 0 });
+      S.jenisEdit.push({ id: '', nama: '', harga_normal: 0, harga_eb: 0, orang: 1, kuota: 0, aktif: true, vip: false, keterangan: '', terpakai: 0 });
       renderJenis();
     });
     $('#simpanPengaturan').addEventListener('click', simpanPengaturan);
@@ -543,12 +548,15 @@
 
   function renderJenis() {
     $('#tbJenis').innerHTML = S.jenisEdit.map(function (j, i) {
-      return '<tr data-i="' + i + '"><td><input type="text" data-f="nama" value="' + esc(j.nama) + '" placeholder="Nama tiket"></td>' +
+      return '<tr data-i="' + i + '"><td style="min-width:220px"><input type="text" data-f="nama" value="' + esc(j.nama) + '" placeholder="Nama tiket">' +
+        '<input type="text" data-f="keterangan" value="' + esc(j.keterangan || '') + '" placeholder="Keterangan/benefit (opsional)" style="margin-top:6px;font-size:.85rem"></td>' +
         '<td><input type="number" data-f="harga_normal" value="' + (j.harga_normal || '') + '" min="0" style="width:120px"></td>' +
         '<td><input type="number" data-f="harga_eb" value="' + (j.harga_eb || '') + '" min="0" style="width:120px" placeholder="opsional"></td>' +
-        '<td><select data-f="orang"' + (j.terpakai ? ' disabled title="Tidak bisa diubah, sudah ada pendaftar"' : '') + '><option value="1"' + (j.orang === 1 ? ' selected' : '') + '>1</option><option value="2"' + (j.orang === 2 ? ' selected' : '') + '>2</option></select></td>' +
+        '<td><input type="number" data-f="orang" value="' + j.orang + '" min="1" max="10" style="width:70px"' + (j.terpakai ? ' disabled title="Tidak bisa diubah, sudah ada pendaftar"' : '') + '></td>' +
         '<td><input type="number" data-f="kuota" value="' + (j.kuota || '') + '" min="' + j.terpakai + '" style="width:90px"></td>' +
+        '<td class="angka kursi">' + ((j.kuota || 0) * (j.orang || 1)) + '</td>' +
         '<td class="angka">' + j.terpakai + '</td>' +
+        '<td><input type="checkbox" data-f="vip"' + (j.vip ? ' checked' : '') + '></td>' +
         '<td><input type="checkbox" data-f="aktif"' + (j.aktif ? ' checked' : '') + '></td>' +
         '<td>' + (j.terpakai ? '' : '<button class="btn sekunder kecil" data-hapus="' + i + '" type="button">Hapus</button>') + '</td></tr>';
     }).join('');
@@ -558,6 +566,8 @@
         var v = el.type === 'checkbox' ? el.checked : el.value;
         if (fld === 'harga_normal' || fld === 'harga_eb' || fld === 'kuota' || fld === 'orang') v = Number(v) || 0;
         S.jenisEdit[i][fld] = v;
+        var jj = S.jenisEdit[i];
+        el.closest('tr').querySelector('.kursi').textContent = (jj.kuota || 0) * (jj.orang || 1);
         cekKapasitas();
       });
       if (el.type === 'checkbox' || el.tagName === 'SELECT') el.addEventListener('change', function () { el.dispatchEvent(new Event('input')); });
@@ -580,7 +590,7 @@
     var c = {};
     $$('#pIsi [data-k]').forEach(function (el) { c[el.getAttribute('data-k')] = el.value; });
     c.penitipan_aktif = $('#c_penitipan_aktif').checked ? 'ya' : 'tidak';
-    return { config: c, jenis_tiket: S.jenisEdit.map(function (j) { return { id: j.id, nama: j.nama, harga_normal: j.harga_normal, harga_eb: j.harga_eb, orang: j.orang, kuota: j.kuota, aktif: !!j.aktif }; }) };
+    return { config: c, jenis_tiket: S.jenisEdit.map(function (j) { return { id: j.id, nama: j.nama, harga_normal: j.harga_normal, harga_eb: j.harga_eb, orang: j.orang, kuota: j.kuota, aktif: !!j.aktif, vip: !!j.vip, keterangan: j.keterangan || '' }; }) };
   }
 
   function simpanPengaturan() {
@@ -612,7 +622,7 @@
       status: 'buka', buka: c.buka, tutup: c.tutup, early_bird: eb, early_bird_akhir: c.early_bird_akhir,
       batas_bayar_jam: Number(c.batas_bayar_jam) || 24,
       tiket: S.jenisEdit.filter(function (j) { return j.aktif; }).map(function (j) {
-        return { id: j.id || ('baru' + Math.random()), nama: j.nama, orang: j.orang, harga: (eb && j.harga_eb) ? j.harga_eb : j.harga_normal, harga_normal: j.harga_normal, sisa: Math.max(0, j.kuota - j.terpakai) };
+        return { id: j.id || ('baru' + Math.random()), nama: j.nama, orang: j.orang, vip: !!j.vip, keterangan: j.keterangan || '', harga: (eb && j.harga_eb) ? j.harga_eb : j.harga_normal, harga_normal: j.harga_normal, sisa: Math.max(0, j.kuota - j.terpakai) };
       }),
       penitipan: {
         aktif: c.penitipan_aktif === 'ya', sisa: Math.max(0, Number(c.penitipan_kapasitas) - t.anak),

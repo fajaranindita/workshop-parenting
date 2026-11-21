@@ -188,10 +188,16 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
 
+  /** Label & teks untuk anggota lain dalam satu tiket */
+  function labelAnggota(orang) { return orang === 2 ? 'Pasangan' : 'Anggota grup'; }
+  function teksAnggota(p) { return (p.anggota || []).join(', '); }
+  function badgeVip(p) { return p && p.vip ? ' <span class="badge vip">VIP</span>' : ''; }
+
   window.App = {
     api: api, rupiah: rupiah, keDate: keDate, fmtTanggal: fmtTanggal, fmtJam: fmtJam, fmtWaktu: fmtWaktu,
     esc: esc, param: param, $: $, $$: $$, toast: toast, salin: salin, badge: badge, LABEL_STATUS: LABEL_STATUS,
     halaman: halaman, linkWA: linkWA, simpan: simpan, ambil: ambil, hapus: hapus, siapkanFile: siapkanFile,
-    hitungMundur: hitungMundur, memuat: memuat, csv: csv, unduh: unduh
+    hitungMundur: hitungMundur, memuat: memuat, csv: csv, unduh: unduh,
+    labelAnggota: labelAnggota, teksAnggota: teksAnggota, badgeVip: badgeVip
   };
 })();

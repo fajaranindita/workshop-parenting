@@ -73,13 +73,16 @@
       info.tiket.forEach(function (t, i) {
         var habis = t.sisa < 1;
         h += '<label class="opsi' + (habis ? ' habis' : '') + '"><span class="kiri"><input type="radio" name="jenis" value="' + A.esc(t.id) + '"' + (habis ? ' disabled' : '') + '>';
-        h += '<span><span class="nama">' + A.esc(t.nama) + '</span><br><small>' + (t.orang > 1 ? 'Untuk ' + t.orang + ' orang · ' : '') + (habis ? 'Habis' : (t.sisa <= 20 ? 'Sisa ' + t.sisa + ' tiket' : 'Tersedia')) + '</small></span></span>';
-        h += '<span class="harga">' + (t.harga < t.harga_normal ? '<span class="coret">' + A.rupiah(t.harga_normal) + '</span>' : '') + A.rupiah(t.harga) + '</span></label>';
+        h += '<span><span class="nama">' + A.esc(t.nama) + '</span>' + A.badgeVip(t);
+        if (t.keterangan) h += '<br><small class="ket">' + A.esc(t.keterangan) + '</small>';
+        h += '<br><small>' + (t.orang > 1 ? 'Untuk ' + t.orang + ' orang · ' : '') + (habis ? 'Habis' : (t.sisa <= 20 ? 'Sisa ' + t.sisa + ' tiket' : 'Tersedia')) + '</small></span></span>';
+        h += '<span class="harga">' + (t.harga < t.harga_normal ? '<span class="coret">' + A.rupiah(t.harga_normal) + '</span>' : '') + A.rupiah(t.harga) +
+          (t.orang > 2 ? '<small class="per-orang">' + A.rupiah(Math.round(t.harga / t.orang)) + '/orang</small>' : '') + '</span></label>';
       });
       h += '</div>';
 
       h += '<label for="nama">Nama lengkap</label><input id="nama" type="text" autocomplete="name" maxlength="100" required>';
-      h += '<div id="blokPasangan" hidden><label for="pasangan">Nama pasangan</label><input id="pasangan" type="text" maxlength="100"></div>';
+      h += '<div id="blokAnggota" hidden></div>';
       h += '<label for="wa">Nomor WhatsApp</label><input id="wa" type="tel" inputmode="tel" placeholder="08xxxxxxxxxx" autocomplete="tel" required>';
       h += '<div class="hint">E-tiket dan info acara akan dikirim lewat WhatsApp.</div>';
       h += '<label for="email">Email <span class="opsional">(opsional)</span></label><input id="email" type="email" autocomplete="email">';
@@ -130,6 +133,23 @@
       perbaruiRingkasan();
     }
 
+    /** Kolom nama anggota: pasangan (wajib) atau anggota grup (opsional) */
+    function renderAnggota(t) {
+      var blok = A.$('#blokAnggota');
+      var lama = A.$$('.namaAnggota').map(function (i) { return i.value; });
+      if (!t || t.orang < 2) { blok.hidden = true; blok.innerHTML = ''; return; }
+      var h = '';
+      if (t.orang === 2) {
+        h = '<label for="anggota0">Nama pasangan</label><input id="anggota0" class="namaAnggota" type="text" maxlength="100">';
+      } else {
+        h = '<label>Nama anggota grup <span class="opsional">(opsional, boleh diisi sebagian)</span></label>';
+        h += '<div class="hint" style="margin:-2px 0 8px">Anda tercatat sebagai anggota 1 sekaligus penanggung jawab grup. Satu e-tiket berlaku untuk ' + t.orang + ' orang.</div>';
+        for (var i = 0; i < t.orang - 1; i++) h += '<input class="namaAnggota" type="text" maxlength="100" placeholder="Anggota ' + (i + 2) + '" style="margin-bottom:8px">';
+      }
+      blok.innerHTML = h; blok.hidden = false;
+      A.$$('.namaAnggota').forEach(function (inp, i) { if (lama[i]) inp.value = lama[i]; });
+    }
+
     function perbaruiRingkasan() {
       var t = jenisDipilih();
       var el = A.$('#ringkasan');
@@ -146,7 +166,7 @@
       A.$$('input[name=jenis]').forEach(function (r) {
         r.addEventListener('change', function () {
           var t = jenisDipilih();
-          A.$('#blokPasangan').hidden = !(t && t.orang > 1);
+          renderAnggota(t);
           perbaruiRingkasan();
         });
       });
@@ -179,7 +199,7 @@
       var data = {
         jenis_id: t ? t.id : '',
         nama: A.$('#nama').value.trim(),
-        nama_pasangan: A.$('#pasangan').value.trim(),
+        anggota: A.$$('.namaAnggota').map(function (i) { return i.value.trim(); }),
         wa: A.$('#wa').value.trim(),
         email: A.$('#email').value.trim(),
         usia_anak: usiaAnak(),
@@ -188,7 +208,7 @@
       };
       if (!t) return tampilError('Silakan pilih jenis tiket.');
       if (data.nama.length < 3) return tampilError('Nama lengkap wajib diisi.');
-      if (t.orang > 1 && data.nama_pasangan.length < 2) return tampilError('Nama pasangan wajib diisi.');
+      if (t.orang === 2 && (data.anggota[0] || '').length < 2) return tampilError('Nama pasangan wajib diisi.');
       if (data.wa.replace(/\D/g, '').length < 9) return tampilError('Nomor WhatsApp tidak valid.');
       var pt = info.penitipan;
       var usiaSalah = data.usia_anak.some(function (u) { return u === '' || +u < pt.usia_min || +u > pt.usia_maks; });
