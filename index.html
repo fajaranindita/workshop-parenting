@@ -157,8 +157,9 @@
       var anak = usiaAnak().length, biayaAnak = anak * info.penitipan.biaya;
       var h = '<div class="baris"><span>' + A.esc(t.nama) + '</span><span>' + A.rupiah(t.harga) + '</span></div>';
       if (anak) h += '<div class="baris"><span>Penitipan ' + anak + ' anak</span><span>' + (biayaAnak ? A.rupiah(biayaAnak) : 'Gratis') + '</span></div>';
-      h += '<div class="baris"><span class="muted">Kode unik pembayaran</span><span class="muted">+ Rp1–999</span></div>';
-      h += '<div class="baris total"><span>Perkiraan total</span><span>' + A.rupiah(t.harga + biayaAnak) + ' + kode unik</span></div>';
+      h += '<div class="baris total"><span>Subtotal</span><span>' + A.rupiah(t.harga + biayaAnak) + '</span></div>';
+      h += '<div class="hint" style="margin-top:6px">Saat Anda menekan <b>Daftar</b>, sistem menambahkan <b>kode unik Rp1–999</b> agar transfer Anda mudah dicocokkan. ' +
+        'Total pasti yang harus ditransfer langsung tampil di halaman pembayaran.</div>';
       el.innerHTML = h;
     }
 
