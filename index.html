@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pendaftaran Workshop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="bannerPratinjau" class="pratinjau-banner" hidden>MODE PRATINJAU — pendaftaran tidak akan dikirim</div>
+  <div class="wrap">
+    <div id="isi"></div>
+    <p class="footer">Sudah mendaftar? <a href="status.html">Cek status pendaftaran</a></p>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+  (function () {
+    var A = App, isi = A.$('#isi');
+    var pratinjau = A.param('pratinjau') === '1';
+    var info = null;
+
+    isi.innerHTML = A.memuat('Memuat info acara…');
+
+    var muat = pratinjau
+      ? Promise.resolve(A.ambil('ws_pratinjau')).then(function (d) {
+          if (!d) throw new Error('Data pratinjau tidak ditemukan. Buka pratinjau dari halaman Pengaturan.');
+          A.$('#bannerPratinjau').hidden = false; return d;
+        })
+      : A.api('publik');
+
+    muat.then(function (d) { info = d; tampil(); })
+        .catch(function (e) { isi.innerHTML = '<div class="banner danger">' + A.esc(e.message) + '</div>'; });
+
+    function tampil() {
+      var a = info.acara;
+      document.title = 'Pendaftaran ' + (a.nama_acara || 'Workshop');
+      var h = '';
+      h += '<div class="card hero">';
+      h += '<h1>' + A.esc(a.nama_acara) + '</h1>';
+      if (a.deskripsi) h += '<p style="opacity:.95;white-space:pre-line">' + A.esc(a.deskripsi) + '</p>';
+      h += '<div class="meta">';
+      if (a.tanggal_acara) h += '<div>📅 <span>' + A.fmtTanggal(a.tanggal_acara) + ', ' + A.fmtJam(a.tanggal_acara) + '</span></div>';
+      if (a.lokasi) h += '<div>📍 <span>' + A.esc(a.lokasi) + (a.link_maps ? ' · <a href="' + A.esc(a.link_maps) + '" target="_blank" rel="noopener">Lihat peta</a>' : '') + '</span></div>';
+      h += '</div></div>';
+
+      if (info.status === 'belum_buka') {
+        h += '<div class="card"><div class="banner info">Pendaftaran dibuka pada <b>' + A.fmtTanggal(info.buka) + ', ' + A.fmtJam(info.buka) + '</b>.</div>' + daftarHarga() + '</div>';
+        isi.innerHTML = h; return;
+      }
+      if (info.status === 'tutup') {
+        h += '<div class="card"><div class="banner warn">Pendaftaran sudah ditutup. Terima kasih atas antusiasmenya!</div></div>';
+        isi.innerHTML = h; return;
+      }
+      if (info.status === 'belum_diatur') {
+        h += '<div class="card"><div class="banner info">Pendaftaran belum dibuka. Pantau terus info dari panitia.</div></div>';
+        isi.innerHTML = h; return;
+      }
+      var semuaHabis = info.tiket.every(function (t) { return t.sisa < 1; });
+      if (semuaHabis) {
+        h += '<div class="card"><div class="banner warn">Maaf, semua tiket sudah habis.</div></div>';
+        isi.innerHTML = h; return;
+      }
+
+      h += '<form id="form" class="card" novalidate>';
+      h += '<h2>Formulir Pendaftaran</h2>';
+      if (info.early_bird) h += '<div class="banner ok">🎉 Harga early bird berlaku sampai ' + A.fmtTanggal(info.early_bird_akhir) + '.</div>';
+
+      h += '<label>Pilih tiket</label><div class="pilihan">';
+      info.tiket.forEach(function (t, i) {
+        var habis = t.sisa < 1;
+        h += '<label class="opsi' + (habis ? ' habis' : '') + '"><span class="kiri"><input type="radio" name="jenis" value="' + A.esc(t.id) + '"' + (habis ? ' disabled' : '') + '>';
+        h += '<span><span class="nama">' + A.esc(t.nama) + '</span><br><small>' + (t.orang > 1 ? 'Untuk ' + t.orang + ' orang · ' : '') + (habis ? 'Habis' : (t.sisa <= 20 ? 'Sisa ' + t.sisa + ' tiket' : 'Tersedia')) + '</small></span></span>';
+        h += '<span class="harga">' + (t.harga < t.harga_normal ? '<span class="coret">' + A.rupiah(t.harga_normal) + '</span>' : '') + A.rupiah(t.harga) + '</span></label>';
+      });
+      h += '</div>';
+
+      h += '<label for="nama">Nama lengkap</label><input id="nama" type="text" autocomplete="name" maxlength="100" required>';
+      h += '<div id="blokPasangan" hidden><label for="pasangan">Nama pasangan</label><input id="pasangan" type="text" maxlength="100"></div>';
+      h += '<label for="wa">Nomor WhatsApp</label><input id="wa" type="tel" inputmode="tel" placeholder="08xxxxxxxxxx" autocomplete="tel" required>';
+      h += '<div class="hint">E-tiket dan info acara akan dikirim lewat WhatsApp.</div>';
+      h += '<label for="email">Email <span class="opsional">(opsional)</span></label><input id="email" type="email" autocomplete="email">';
+
+      var pt = info.penitipan;
+      if (pt.aktif) {
+        h += '<div class="ringkasan"><label class="cek"><input type="checkbox" id="pakaiTitip"' + (pt.sisa < 1 ? ' disabled' : '') + '> <span><b>Saya butuh penitipan anak</b><br><small>Usia ' + pt.usia_min + '–' + pt.usia_maks + ' tahun, maks. ' + pt.maks + ' anak · ' + (pt.biaya > 0 ? A.rupiah(pt.biaya) + '/anak' : 'Gratis') + (pt.sisa < 1 ? ' · <b>Kuota habis</b>' : (pt.sisa <= 10 ? ' · sisa ' + pt.sisa + ' tempat' : '')) + '</small></span></label>';
+        h += '<div id="blokAnak" hidden style="margin-top:10px"><div id="daftarAnak"></div><button type="button" class="btn sekunder kecil" id="tambahAnak">+ Tambah anak</button></div></div>';
+      }
+
+      h += '<label for="tanya">Pertanyaan atau topik yang ingin dibahas <span class="opsional">(opsional)</span></label><textarea id="tanya" maxlength="500" placeholder="Misalnya: cara menghadapi tantrum anak usia 3 tahun"></textarea>';
+
+      h += '<div class="ringkasan" id="ringkasan"></div>';
+      h += '<label class="cek" style="margin-top:14px"><input type="checkbox" id="setuju"> <span>Saya setuju data di atas digunakan panitia hanya untuk keperluan acara ini.</span></label>';
+      h += '<div id="pesanError" class="banner danger" hidden style="margin-top:14px"></div>';
+      h += '<button class="btn blok" id="kirim" type="submit" style="margin-top:16px">Daftar &amp; Lanjut ke Pembayaran</button>';
+      h += '<p class="hint" style="text-align:center;margin-top:10px">Batas pembayaran ' + info.batas_bayar_jam + ' jam setelah mendaftar.</p>';
+      h += '</form>';
+      isi.innerHTML = h;
+      pasangEvent();
+    }
+
+    function daftarHarga() {
+      return '<h3>Harga tiket</h3>' + info.tiket.map(function (t) {
+        return '<div class="baris"><span>' + A.esc(t.nama) + '</span><b>' + A.rupiah(t.harga) + '</b></div>';
+      }).join('');
+    }
+
+    function jenisDipilih() {
+      var r = A.$('input[name=jenis]:checked');
+      return r ? info.tiket.filter(function (t) { return t.id === r.value; })[0] : null;
+    }
+
+    function usiaAnak() {
+      if (!A.$('#pakaiTitip') || !A.$('#pakaiTitip').checked) return [];
+      return A.$$('.usiaAnak').map(function (i) { return i.value; });
+    }
+
+    function tambahAnak() {
+      var pt = info.penitipan;
+      var n = A.$$('.usiaAnak').length;
+      if (n >= Math.min(pt.maks, pt.sisa)) { A.toast('Maksimal ' + Math.min(pt.maks, pt.sisa) + ' anak.', true); return; }
+      var div = document.createElement('div');
+      div.className = 'anak-baris';
+      div.innerHTML = '<span>Anak ' + (n + 1) + '</span><input type="number" class="usiaAnak" min="' + pt.usia_min + '" max="' + pt.usia_maks + '" placeholder="Usia"><span class="muted">tahun</span>' +
+        (n > 0 ? '<button type="button" class="btn sekunder kecil hapusAnak">Hapus</button>' : '');
+      A.$('#daftarAnak').appendChild(div);
+      perbaruiRingkasan();
+    }
+
+    function perbaruiRingkasan() {
+      var t = jenisDipilih();
+      var el = A.$('#ringkasan');
+      if (!t) { el.innerHTML = '<span class="muted">Pilih jenis tiket untuk melihat total.</span>'; return; }
+      var anak = usiaAnak().length, biayaAnak = anak * info.penitipan.biaya;
+      var h = '<div class="baris"><span>' + A.esc(t.nama) + '</span><span>' + A.rupiah(t.harga) + '</span></div>';
+      if (anak) h += '<div class="baris"><span>Penitipan ' + anak + ' anak</span><span>' + (biayaAnak ? A.rupiah(biayaAnak) : 'Gratis') + '</span></div>';
+      h += '<div class="baris"><span class="muted">Kode unik pembayaran</span><span class="muted">+ Rp1–999</span></div>';
+      h += '<div class="baris total"><span>Perkiraan total</span><span>' + A.rupiah(t.harga + biayaAnak) + ' + kode unik</span></div>';
+      el.innerHTML = h;
+    }
+
+    function pasangEvent() {
+      A.$$('input[name=jenis]').forEach(function (r) {
+        r.addEventListener('change', function () {
+          var t = jenisDipilih();
+          A.$('#blokPasangan').hidden = !(t && t.orang > 1);
+          perbaruiRingkasan();
+        });
+      });
+      var cekTitip = A.$('#pakaiTitip');
+      if (cekTitip) {
+        cekTitip.addEventListener('change', function () {
+          A.$('#blokAnak').hidden = !cekTitip.checked;
+          if (cekTitip.checked && !A.$$('.usiaAnak').length) tambahAnak();
+          perbaruiRingkasan();
+        });
+        A.$('#tambahAnak').addEventListener('click', tambahAnak);
+        A.$('#daftarAnak').addEventListener('click', function (e) {
+          if (e.target.classList.contains('hapusAnak')) { e.target.parentNode.remove(); perbaruiRingkasan(); }
+        });
+      }
+      perbaruiRingkasan();
+      A.$('#form').addEventListener('submit', kirim);
+    }
+
+    function tampilError(pesan) {
+      var el = A.$('#pesanError');
+      el.textContent = pesan; el.hidden = false;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function kirim(e) {
+      e.preventDefault();
+      A.$('#pesanError').hidden = true;
+      var t = jenisDipilih();
+      var data = {
+        jenis_id: t ? t.id : '',
+        nama: A.$('#nama').value.trim(),
+        nama_pasangan: A.$('#pasangan').value.trim(),
+        wa: A.$('#wa').value.trim(),
+        email: A.$('#email').value.trim(),
+        usia_anak: usiaAnak(),
+        pertanyaan: A.$('#tanya').value.trim(),
+        persetujuan: A.$('#setuju').checked
+      };
+      if (!t) return tampilError('Silakan pilih jenis tiket.');
+      if (data.nama.length < 3) return tampilError('Nama lengkap wajib diisi.');
+      if (t.orang > 1 && data.nama_pasangan.length < 2) return tampilError('Nama pasangan wajib diisi.');
+      if (data.wa.replace(/\D/g, '').length < 9) return tampilError('Nomor WhatsApp tidak valid.');
+      var pt = info.penitipan;
+      var usiaSalah = data.usia_anak.some(function (u) { return u === '' || +u < pt.usia_min || +u > pt.usia_maks; });
+      if (usiaSalah) return tampilError('Isi usia anak antara ' + pt.usia_min + '–' + pt.usia_maks + ' tahun.');
+      if (!data.persetujuan) return tampilError('Mohon centang persetujuan penggunaan data.');
+      if (pratinjau) { A.toast('Mode pratinjau: formulir valid, tidak dikirim.'); return; }
+
+      var btn = A.$('#kirim');
+      btn.disabled = true; btn.textContent = 'Memproses…';
+      A.api('daftar', { data: data }).then(function (res) {
+        A.simpan('ws_terakhir', { kode: res.kode, akses: res.akses });
+        location.href = A.halaman('bayar.html', { k: res.kode, a: res.akses, baru: '1' });
+      }).catch(function (err) {
+        tampilError(err.message);
+        btn.disabled = false; btn.textContent = 'Daftar & Lanjut ke Pembayaran';
+        if (err.kode === 'HABIS') A.api('publik').then(function (d) { info = d; });
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

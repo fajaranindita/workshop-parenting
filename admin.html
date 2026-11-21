@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Dashboard Panitia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Login -->
+  <div id="vLogin" class="wrap" style="max-width:420px;padding-top:60px" hidden>
+    <form class="card" id="formLogin">
+      <h1>Dashboard Panitia</h1>
+      <label for="lUser">Username</label>
+      <input id="lUser" type="text" autocomplete="username" autocapitalize="none" required>
+      <label for="lPass">Password</label>
+      <input id="lPass" type="password" autocomplete="current-password" required>
+      <div id="lError" class="banner danger" hidden style="margin-top:14px"></div>
+      <button class="btn blok" id="lBtn" style="margin-top:16px">Masuk</button>
+    </form>
+  </div>
+
+  <!-- Utama -->
+  <div id="vUtama" hidden>
+    <div class="topbar">
+      <a class="brand" href="admin.html"><span class="brand-dot"></span><span id="judulAcara">Dashboard</span></a>
+      <div class="btn-grup" style="align-items:center">
+        <a class="btn sekunder kecil" href="checkin.html">Check-in</a>
+        <span class="muted" id="infoAdmin" style="font-size:.88rem"></span>
+        <button class="btn sekunder kecil" id="btnKeluar">Keluar</button>
+      </div>
+    </div>
+    <div class="wrap lebar">
+      <div class="tabs">
+        <button class="tab aktif" data-tab="peserta">Peserta</button>
+        <button class="tab" data-tab="mutasi">Cocokkan Mutasi</button>
+        <button class="tab" data-tab="pengaturan" id="tabPengaturan" hidden>Pengaturan Acara</button>
+        <button class="tab" data-tab="log">Log</button>
+      </div>
+
+      <!-- Tab Peserta -->
+      <section id="tPeserta">
+        <div class="statgrid" id="stat"></div>
+        <div class="chips" id="chips"></div>
+        <div class="alat">
+          <input type="text" id="cari" placeholder="Cari nama, kode, nomor WA, atau nominal…">
+          <button class="btn sekunder" id="btnMuat">Muat ulang</button>
+          <button class="btn sekunder" id="btnCsv">Export CSV</button>
+        </div>
+        <div class="tabel-wrap"><table>
+          <thead><tr><th>Kode</th><th>Nama</th><th>Tiket</th><th class="angka">Nominal</th><th>Status</th><th>Bukti</th><th>Daftar</th></tr></thead>
+          <tbody id="tbPeserta"></tbody>
+        </table></div>
+        <p class="hint" id="infoMuat"></p>
+      </section>
+
+      <!-- Tab Mutasi -->
+      <section id="tMutasi" hidden>
+        <div class="card">
+          <h2>Cocokkan Mutasi Rekening</h2>
+          <p>Bank aktif: <b id="mBank"></b>. Unggah file CSV mutasi dari internet banking, <b>atau</b> salin-tempel teks mutasi ke kotak di bawah. Sistem akan mencocokkan nominal transfer dengan kode unik pendaftar.</p>
+          <label for="mFile">File mutasi (CSV/TXT)</label>
+          <input type="file" id="mFile" accept=".csv,.txt,text/csv,text/plain">
+          <label for="mTeks">Atau tempel teks mutasi</label>
+          <textarea id="mTeks" style="min-height:140px" placeholder="Tempel baris-baris mutasi di sini…"></textarea>
+          <div class="btn-grup" style="margin-top:12px"><button class="btn" id="mProses">Cocokkan</button></div>
+        </div>
+        <div id="mHasil"></div>
+      </section>
+
+      <!-- Tab Pengaturan -->
+      <section id="tPengaturan" hidden><div id="pIsi"></div></section>
+
+      <!-- Tab Log -->
+      <section id="tLog" hidden>
+        <div class="alat"><button class="btn sekunder" id="btnLog">Muat ulang</button></div>
+        <div class="tabel-wrap"><table>
+          <thead><tr><th>Waktu</th><th>Admin</th><th>Aksi</th><th>Kode</th><th>Detail</th></tr></thead>
+          <tbody id="tbLog"></tbody>
+        </table></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-latar" id="modal"><div class="modal"><button class="tutup" id="modalTutup" aria-label="Tutup">×</button><div id="modalIsi"></div></div></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

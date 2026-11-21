@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Check-in Peserta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <div id="vLogin" class="wrap" style="max-width:420px;padding-top:60px" hidden>
+    <div class="card">
+      <h1>Check-in Peserta</h1>
+      <p>Silakan login terlebih dahulu di <a href="admin.html">Dashboard Panitia</a>, lalu kembali ke halaman ini.</p>
+      <a class="btn blok" href="admin.html">Ke halaman login</a>
+    </div>
+  </div>
+
+  <div id="vUtama" hidden>
+    <div class="topbar">
+      <a class="brand" href="admin.html"><span class="brand-dot"></span>Check-in</a>
+      <div style="text-align:right"><div style="font-weight:800;font-size:1.15rem"><span id="jmlHadir">0</span> / <span id="jmlTotal">0</span></div><small class="muted">orang hadir</small></div>
+    </div>
+    <div class="wrap">
+      <div id="pemindai"></div>
+      <div class="btn-grup" style="justify-content:center;margin-top:10px">
+        <button class="btn" id="btnScan">Mulai scan</button>
+        <button class="btn sekunder" id="btnUnduh">Unduh daftar cadangan</button>
+      </div>
+      <div id="hasil"></div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>Cari manual</h2>
+        <input type="text" id="cari" placeholder="Nama, kode, atau nomor WA…">
+        <div id="hasilCari" style="margin-top:10px"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+  (function () {
+    var A = App, $ = A.$, esc = A.esc;
+    var sesi = A.ambil('ws_sesi'), peserta = [], scanner = null, berjalan = false, sibuk = false, terakhir = { t: '', w: 0 };
+
+    function apiA(aksi, data) {
+      return A.api(aksi, Object.assign({ sesi: sesi }, data || {})).catch(function (e) {
+        if (e.kode === 'SESI') { $('#vUtama').hidden = true; $('#vLogin').hidden = false; }
+        throw e;
+      });
+    }
+
+    if (!sesi) { $('#vLogin').hidden = false; return; }
+    apiA('me').then(function () { $('#vUtama').hidden = false; muat(); setInterval(muat, 60000); })
+      .catch(function () { $('#vLogin').hidden = false; });
+
+    function muat() {
+      return apiA('peserta').then(function (r) {
+        peserta = r.peserta.filter(function (p) { return p.status === 'lunas' || p.status === 'hadir'; });
+        hitung(); cari();
+      }).catch(function (e) { A.toast(e.message, true); });
+    }
+    function hitung() {
+      var total = 0, hadir = 0;
+      peserta.forEach(function (p) { total += p.orang; if (p.status === 'hadir') hadir += p.orang; });
+      $('#jmlHadir').textContent = hadir; $('#jmlTotal').textContent = total;
+    }
+    function perbarui(p) {
+      for (var i = 0; i < peserta.length; i++) if (peserta[i].kode === p.kode) { peserta[i] = p; hitung(); return; }
+    }
+
+    function bunyi(ok) {
+      try {
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = ok ? 880 : 220; o.connect(g); g.connect(ctx.destination);
+        g.gain.value = 0.15; o.start(); o.stop(ctx.currentTime + (ok ? 0.15 : 0.4));
+      } catch (e) { }
+      if (navigator.vibrate) navigator.vibrate(ok ? 80 : [80, 60, 80]);
+    }
+
+    function tampilHasil(r) {
+      var p = r.peserta, h;
+      var detail = p ? '<div style="font-size:1.15rem;font-weight:700;margin-top:6px">' + esc(p.nama) + (p.nama_pasangan ? ' & ' + esc(p.nama_pasangan) : '') + '</div>' +
+        '<div>' + esc(p.kode) + ' · ' + esc(p.jenis_nama) + ' · <b>' + p.orang + ' orang</b>' + (p.jumlah_anak ? ' · <b>' + p.jumlah_anak + ' anak dititipkan</b> (usia ' + esc(p.usia_anak) + ')' : '') + '</div>' : '';
+      if (r.hasil === 'berhasil') h = '<div class="hasil-scan berhasil"><div class="judul">✔ Check-in berhasil</div>' + detail + '</div>';
+      else if (r.hasil === 'sudah') h = '<div class="hasil-scan sudah"><div class="judul">⚠ Sudah check-in</div>' + detail + '<div>pada ' + A.fmtWaktu(p.checkin_waktu) + ' oleh ' + esc(p.checkin_oleh) + '</div></div>';
+      else if (r.hasil === 'belum_lunas') h = '<div class="hasil-scan gagal"><div class="judul">✖ Belum lunas</div>' + detail + '<div>Status: ' + esc(A.LABEL_STATUS[p.status] || p.status) + '</div></div>';
+      else h = '<div class="hasil-scan gagal"><div class="judul">✖ Tiket tidak ditemukan</div><div>Coba cari manual dengan nama atau kode.</div></div>';
+      $('#hasil').innerHTML = h;
+      bunyi(r.hasil === 'berhasil');
+      if (p) perbarui(p);
+    }
+
+    function prosesCheckin(data) {
+      if (sibuk) return Promise.resolve();
+      sibuk = true;
+      $('#hasil').innerHTML = A.memuat('Memeriksa tiket…');
+      return apiA('checkin', data).then(tampilHasil)
+        .catch(function (e) { $('#hasil').innerHTML = '<div class="hasil-scan gagal"><div class="judul">Gagal</div>' + esc(e.message) + '</div>'; })
+        .then(function () { sibuk = false; cari(); });
+    }
+
+    $('#btnScan').addEventListener('click', function () {
+      if (berjalan) {
+        scanner.stop().then(function () { berjalan = false; $('#btnScan').textContent = 'Mulai scan'; });
+        return;
+      }
+      if (!window.Html5Qrcode) return A.toast('Library scanner gagal dimuat. Periksa koneksi.', true);
+      scanner = scanner || new Html5Qrcode('pemindai');
+      scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, function (teks) {
+        var now = Date.now();
+        if (teks === terakhir.t && now - terakhir.w < 4000) return; // abaikan scan berulang
+        terakhir = { t: teks, w: now };
+        prosesCheckin({ token: teks });
+      }, function () { }).then(function () {
+        berjalan = true; $('#btnScan').textContent = 'Hentikan scan';
+      }).catch(function (e) {
+        A.toast('Kamera tidak bisa dibuka: ' + (e && e.message ? e.message : e) + '. Izinkan akses kamera di browser.', true);
+      });
+    });
+
+    $('#cari').addEventListener('input', cari);
+    function cari() {
+      var q = $('#cari').value.toLowerCase().replace(/\s/g, '');
+      if (q.length < 2) { $('#hasilCari').innerHTML = '<p class="hint">Ketik minimal 2 huruf.</p>'; return; }
+      var hasil = peserta.filter(function (p) {
+        return (p.nama + p.nama_pasangan + p.kode + p.wa).toLowerCase().replace(/\s/g, '').indexOf(q) >= 0;
+      }).slice(0, 20);
+      $('#hasilCari').innerHTML = hasil.length ? hasil.map(function (p) {
+        return '<div class="salin-baris"><div><b>' + esc(p.nama) + '</b>' + (p.nama_pasangan ? ' & ' + esc(p.nama_pasangan) : '') +
+          '<br><small>' + esc(p.kode) + ' · ' + esc(p.jenis_nama) + (p.jumlah_anak ? ' · ' + p.jumlah_anak + ' anak' : '') + '</small></div>' +
+          (p.status === 'hadir' ? A.badge('hadir') : '<button class="btn kecil" data-kode="' + esc(p.kode) + '">Check-in</button>') + '</div>';
+      }).join('') : '<p class="muted">Tidak ditemukan di daftar peserta lunas.</p>';
+    }
+    $('#hasilCari').addEventListener('click', function (e) {
+      var k = e.target.getAttribute('data-kode');
+      if (k) { e.target.disabled = true; prosesCheckin({ kode: k }); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    });
+
+    $('#btnUnduh').addEventListener('click', function () {
+      var rows = [['kode', 'nama', 'nama_pasangan', 'wa', 'jenis', 'orang', 'jumlah_anak', 'usia_anak', 'status']].concat(
+        peserta.map(function (p) { return [p.kode, p.nama, p.nama_pasangan, p.wa, p.jenis_nama, p.orang, p.jumlah_anak, p.usia_anak, p.status]; }));
+      A.unduh('daftar-peserta-lunas.csv', A.csv(rows));
+    });
+  })();
+  </script>
+</body>
+</html>

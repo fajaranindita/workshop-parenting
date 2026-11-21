@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pembayaran</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+    <div id="isi"></div>
+    <p class="footer"><a href="index.html">Halaman acara</a> · <a href="status.html">Cek status</a></p>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+  (function () {
+    var A = App, isi = A.$('#isi');
+    var kode = A.param('k'), akses = A.param('a'), baru = A.param('baru') === '1';
+    var p = null, fileSiap = null, sudahMuatUlang = false;
+
+    if (!kode || !akses) {
+      isi.innerHTML = '<div class="card"><div class="banner warn">Link tidak lengkap. Silakan buka halaman <a href="status.html">Cek Status</a>.</div></div>';
+      return;
+    }
+    muat();
+
+    function muat() {
+      isi.innerHTML = A.memuat('Memuat data pembayaran…');
+      A.api('infoBayar', { kode: kode, akses: akses })
+        .then(function (r) { p = r.peserta; tampil(); })
+        .catch(function (e) { isi.innerHTML = '<div class="card"><div class="banner danger">' + A.esc(e.message) + '</div></div>'; });
+    }
+
+    function linkIni() { return A.halaman('bayar.html', { k: kode, a: akses }); }
+
+    function tampil() {
+      var h = '';
+      if (baru) h += '<div class="banner ok"><b>Pendaftaran berhasil!</b> Selesaikan pembayaran agar tiket Anda aktif.</div>';
+
+      h += '<div class="card">';
+      h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">';
+      h += '<div><small>Kode registrasi</small><div style="font-size:1.4rem;font-weight:800;letter-spacing:.06em">' + A.esc(p.kode) + '</div></div>' + A.badge(p.status) + '</div>';
+      h += '<p class="hint" style="margin-top:8px">Simpan kode ini. Anda bisa membuka halaman ini lagi lewat menu Cek Status (kode + nomor WA).</p>';
+      h += '<a class="btn wa kecil" target="_blank" rel="noopener" href="' + A.linkWA(p.wa, 'Pendaftaran ' + p.acara.nama_acara + '\nKode: ' + p.kode + '\nTotal: ' + A.rupiah(p.nominal) + '\nLink pembayaran & tiket: ' + linkIni()) + '">Simpan link ini ke WhatsApp saya</a>';
+      h += '</div>';
+
+      if (p.status === 'lunas' || p.status === 'hadir') {
+        h += '<div class="card"><div class="banner ok">Pembayaran Anda sudah terverifikasi. 🎉</div>';
+        h += '<a class="btn blok" href="' + A.halaman('tiket.html', { t: p.token_tiket }) + '">Lihat E-Tiket</a></div>';
+        isi.innerHTML = h; return;
+      }
+      if (p.status === 'kedaluwarsa') {
+        h += '<div class="card"><div class="banner warn">Batas waktu pembayaran sudah lewat dan pendaftaran ini tidak aktif lagi.</div>';
+        h += '<p>Jika Anda <b>sudah transfer</b>, hubungi panitia dengan menyertakan kode registrasi. Jika belum, silakan daftar ulang bila kuota masih tersedia.</p>';
+        h += kontak() + ' <a class="btn sekunder" href="index.html">Daftar ulang</a></div>';
+        isi.innerHTML = h; return;
+      }
+      if (p.status === 'batal') {
+        h += '<div class="card"><div class="banner warn">Pendaftaran ini sudah dibatalkan oleh panitia.' + (p.alasan_tolak ? ' Keterangan: ' + A.esc(p.alasan_tolak) : '') + '</div>' + kontak() + '</div>';
+        isi.innerHTML = h; return;
+      }
+      if (p.status === 'menunggu_verifikasi') {
+        h += '<div class="card"><div class="banner info">Bukti pembayaran sudah kami terima (' + A.fmtWaktu(p.bukti_waktu) + ') dan sedang diverifikasi panitia. E-tiket akan dikirim lewat WhatsApp setelah diverifikasi.</div>';
+        h += '<p class="hint">Salah unggah? Anda masih bisa mengganti bukti di bawah ini.</p></div>';
+      }
+      if (p.status === 'ditolak') {
+        h += '<div class="card"><div class="banner danger"><b>Bukti pembayaran belum bisa diverifikasi.</b><br>Alasan: ' + A.esc(p.alasan_tolak) + '<br>Silakan unggah ulang sebelum batas waktu.</div></div>';
+      }
+
+      // Instruksi bayar
+      var nom = String(p.nominal), unik = ('00' + p.kode_unik).slice(-3);
+      var depan = A.rupiah(p.nominal).slice(0, -3);
+      h += '<div class="card"><h2>Transfer tepat sebesar</h2>';
+      h += '<div class="nominal-besar">' + depan + '<span class="unik">' + unik + '</span></div>';
+      h += '<p class="hint">Mohon transfer <b>persis sampai 3 digit terakhir</b> (kode unik ' + unik + ') agar pembayaran mudah dicocokkan.</p>';
+      h += '<button class="btn sekunder kecil" data-salin="' + nom + '">Salin nominal</button>';
+      h += '<div class="ringkasan"><div class="baris"><span>' + A.esc(p.jenis_nama) + '</span><span>' + A.rupiah(p.harga_tiket) + '</span></div>';
+      if (p.jumlah_anak) h += '<div class="baris"><span>Penitipan ' + p.jumlah_anak + ' anak</span><span>' + (p.biaya_anak ? A.rupiah(p.biaya_anak) : 'Gratis') + '</span></div>';
+      h += '<div class="baris"><span>Kode unik</span><span>' + A.rupiah(p.kode_unik) + '</span></div>';
+      h += '<div class="baris total"><span>Total</span><span>' + A.rupiah(p.nominal) + '</span></div></div>';
+
+      h += '<h3 style="margin-top:18px">Ke rekening</h3>';
+      h += '<div class="salin-baris"><div><small>Bank ' + A.esc(p.bank) + '</small><div class="nilai">' + A.esc(p.no_rekening) + '</div><small>a.n. ' + A.esc(p.atas_nama) + '</small></div><button class="btn sekunder kecil" data-salin="' + A.esc(p.no_rekening) + '">Salin</button></div>';
+      var adaBatas = p.status === 'menunggu_bayar' || p.status === 'ditolak';
+      if (adaBatas) h += '<div class="banner warn" style="margin-top:12px">Bayar sebelum <b>' + A.fmtWaktu(p.batas_bayar) + '</b><br>Sisa waktu: <b id="mundur"></b></div>';
+      h += '</div>';
+
+      // Unggah bukti
+      h += '<div class="card"><h2>' + (p.ada_bukti ? 'Ganti bukti transfer' : 'Unggah bukti transfer') + '</h2>';
+      h += '<label class="unggah" for="file" id="kotakUnggah"><div>📎 <b>Pilih foto/screenshot bukti transfer</b></div><small>JPG, PNG, atau PDF · maks. 2,5 MB</small><div id="pratinjau"></div></label>';
+      h += '<input type="file" id="file" accept="image/*,application/pdf" hidden>';
+      h += '<button class="btn blok" id="kirim" style="margin-top:14px" disabled>Kirim Bukti Transfer</button>';
+      h += '</div>';
+      h += '<div class="card" style="text-align:center">' + kontak() + '</div>';
+      isi.innerHTML = h;
+
+      if (adaBatas && !sudahMuatUlang) {
+        A.hitungMundur(p.batas_bayar, A.$('#mundur'), function () { sudahMuatUlang = true; setTimeout(muat, 1500); });
+      }
+      A.$$('[data-salin]').forEach(function (b) { b.addEventListener('click', function () { A.salin(b.getAttribute('data-salin')); }); });
+      A.$('#file').addEventListener('change', pilihFile);
+      A.$('#kirim').addEventListener('click', kirimBukti);
+    }
+
+    function kontak() {
+      if (!p.acara.kontak_wa) return '';
+      return '<a class="btn sekunder" target="_blank" rel="noopener" href="' + A.linkWA(p.acara.kontak_wa, 'Halo panitia, saya ' + p.nama + ' (kode ' + p.kode + '). ') + '">Hubungi panitia via WA</a>';
+    }
+
+    function pilihFile(e) {
+      var f = e.target.files[0];
+      fileSiap = null;
+      A.$('#kirim').disabled = true;
+      A.$('#pratinjau').innerHTML = '<div class="memuat" style="padding:10px">Menyiapkan file…</div>';
+      A.siapkanFile(f).then(function (hasil) {
+        fileSiap = hasil;
+        A.$('#pratinjau').innerHTML = hasil.pratinjau ? '<img src="' + hasil.pratinjau + '" alt="Pratinjau bukti">' : '<p style="margin-top:10px">📄 ' + A.esc(f.name) + '</p>';
+        A.$('#kirim').disabled = false;
+      }).catch(function (err) {
+        A.$('#pratinjau').innerHTML = '';
+        A.toast(err.message, true);
+      });
+    }
+
+    function kirimBukti() {
+      if (!fileSiap) return;
+      var btn = A.$('#kirim');
+      btn.disabled = true; btn.textContent = 'Mengunggah…';
+      A.api('unggahBukti', { kode: kode, akses: akses, mime: fileSiap.mime, data: fileSiap.data })
+        .then(function (r) {
+          p = r.peserta; baru = false;
+          A.toast('Bukti transfer terkirim. Terima kasih!');
+          tampil();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        })
+        .catch(function (err) {
+          A.toast(err.message, true);
+          btn.disabled = false; btn.textContent = 'Kirim Bukti Transfer';
+        });
+    }
+  })();
+  </script>
+</body>
+</html>
