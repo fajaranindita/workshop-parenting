@@ -196,6 +196,7 @@
   }
 
   function renderDetail(p, bukti, peringatan) {
+    S.buktiDetail = bukti; // disimpan agar bukti tetap tampil setelah diterima/ditolak
     var koor = S.admin.peran === 'koordinator';
     var h = '<h2>' + esc(p.nama) + ' ' + A.badge(p.status) + A.badgeVip(p) + '</h2>';
     if (peringatan) h += '<div class="banner warn">⚠ ' + esc(peringatan) + '</div>';
@@ -265,9 +266,8 @@
     apiA('verifikasi', { kode: p.kode, terima: true }).then(function (r) {
       A.toast('Pembayaran ' + p.kode + ' diterima.');
       perbaruiLokal(r.peserta);
-      renderDetail(r.peserta, null, '');
-      $('#panelAksi').innerHTML = '<div class="banner ok" style="margin-top:12px">Tiket sudah terbit. Kirim e-tiket ke peserta: <a class="btn wa kecil" target="_blank" rel="noopener" href="' +
-        A.linkWA(r.peserta.wa, pesanTiket(r.peserta)) + '">Kirim via WA</a></div>';
+      renderDetail(r.peserta, S.buktiDetail, '');
+      $('#panelAksi').innerHTML = '<div class="banner ok" style="margin-top:12px">✔ Pembayaran diterima dan e-tiket sudah terbit. Langkah berikutnya: klik <b>Kirim e-tiket via WA</b> di atas.</div>';
     }).catch(function (e) { A.toast(e.message, true); btn.disabled = false; btn.textContent = '✔ Terima pembayaran'; });
   }
 
@@ -284,9 +284,8 @@
       this.disabled = true;
       apiA('verifikasi', { kode: p.kode, terima: false, alasan: alasanIsi }).then(function (r) {
         perbaruiLokal(r.peserta);
-        renderDetail(r.peserta, null, '');
-        $('#panelAksi').innerHTML = '<div class="banner warn" style="margin-top:12px">Bukti ditolak. Kabari peserta: <a class="btn wa kecil" target="_blank" rel="noopener" href="' +
-          A.linkWA(r.peserta.wa, pesanTolak(r.peserta)) + '">Kirim via WA</a></div>';
+        renderDetail(r.peserta, S.buktiDetail, '');
+        $('#panelAksi').innerHTML = '<div class="banner warn" style="margin-top:12px">Bukti ditolak. Langkah berikutnya: klik <b>Kabari via WA</b> di atas agar peserta mengunggah ulang.</div>';
       }).catch(function (e) { A.toast(e.message, true); });
     });
   }
