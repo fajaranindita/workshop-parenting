@@ -10,6 +10,16 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <script>
+    /* Tampilkan error yang biasanya membuat halaman kosong */
+    window.addEventListener('error', function (e) {
+      if (!e.message) return;
+      var d = document.createElement('div');
+      d.setAttribute('style', 'background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');
+      d.textContent = 'Terjadi error di halaman: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '') + '. Pastikan semua file folder web/ sudah diunggah dari versi yang sama.';
+      document.body.insertBefore(d, document.body.firstChild);
+    });
+  </script>
   <!-- Login -->
   <div id="vLogin" class="wrap" style="max-width:420px;padding-top:60px" hidden>
     <form class="card" id="formLogin">
@@ -44,11 +54,13 @@
       <!-- Tab Peserta -->
       <section id="tPeserta">
         <div class="statgrid" id="stat"></div>
+        <details class="card rekap" id="rekapKotak"><summary><b>Rekap peserta lunas</b> — jenis kelamin per tiket &amp; asal (untuk tempat duduk)</summary><div id="rekap"></div></details>
         <div class="chips" id="chips"></div>
         <div class="alat">
           <input type="text" id="cari" placeholder="Cari nama, kode, nomor WA, atau nominal…">
           <button class="btn sekunder" id="btnMuat">Muat ulang</button>
-          <button class="btn sekunder" id="btnCsv">Export CSV</button>
+          <button class="btn sekunder" id="btnCsv">Export CSV (per pendaftaran)</button>
+          <button class="btn sekunder" id="btnCsvOrang">Export per orang</button>
         </div>
         <div class="tabel-wrap"><table>
           <thead><tr><th>Kode</th><th>Nama</th><th>Tiket</th><th class="angka">Nominal</th><th>Status</th><th>Bukti</th><th>Daftar</th></tr></thead>
@@ -90,6 +102,15 @@
 
   <script src="config.js"></script>
   <script src="app.js"></script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.25'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
   <script src="admin.js"></script>
+  <script>
+    if (window.ADMIN_VERSI !== '2026.11.25') {
+      var d = document.createElement('div');
+      d.setAttribute('style', 'background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');
+      d.textContent = 'Halaman admin belum bisa dipakai: admin.js tidak ditemukan atau berbeda versi dengan admin.html. Unggah ulang SEMUA file folder web/ kecuali config.js.';
+      document.body.insertBefore(d, document.body.firstChild);
+    }
+  </script>
 </body>
 </html>

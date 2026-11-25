@@ -241,3 +241,21 @@ td input, td select { padding: 7px 8px; }
 .tiket-vip .atas { background: linear-gradient(135deg, #1f1f1f 0%, #3a3326 100%); }
 .tiket-vip .atas small { color: #f2c94c; opacity: 1; }
 .vip-besar { display: inline-block; background: #1f1f1f; color: #f2c94c; font-weight: 800; letter-spacing: .15em; padding: 4px 14px; border-radius: 8px; margin-top: 8px; font-size: 1.1rem; }
+
+/* ---------- Jenis kelamin & anggota ---------- */
+.jk { display: flex; gap: 8px; }
+.jk label {
+  flex: 1; margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px; border: 2px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; font-weight: 600;
+}
+.jk label:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.jk input { accent-color: var(--primary); }
+.orang-blok { border-top: 1px dashed var(--line); margin-top: 14px; padding-top: 2px; }
+.orang-blok .jk { margin-top: 8px; }
+.catatan-nama { white-space: pre-line; background: var(--warn-soft); color: #7a5212; padding: 8px 10px; border-radius: 8px; margin-top: 6px; }
+.jk-besar { display: inline-block; margin-top: 8px; padding: 4px 12px; border-radius: 8px; background: rgba(0,0,0,.06); font-weight: 800; font-size: 1.1rem; letter-spacing: .03em; }
+.rekap summary { cursor: pointer; }
+.rekap h3 { margin-top: 4px; }
+.baris-isi { display: flex; gap: 8px; }
+.baris-isi input { flex: 1; }
+small.asal { color: var(--primary); }

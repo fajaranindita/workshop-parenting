@@ -1,4 +1,5 @@
 /* Dashboard panitia */
+window.ADMIN_VERSI = '2026.11.25';
 (function () {
   'use strict';
   var A = App, $ = A.$, $$ = A.$$, esc = A.esc;

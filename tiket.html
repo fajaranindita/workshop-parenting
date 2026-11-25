@@ -16,6 +16,7 @@
 
   <script src="config.js"></script>
   <script src="app.js"></script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.25'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
   <script>
   (function () {
     var A = App, isi = A.$('#isi'), t = A.param('t');
@@ -34,8 +35,10 @@
       h += '<div class="qr" id="qr"></div>';
       h += '<div class="kode">' + A.esc(k.kode) + '</div>';
       h += '<div class="potong" style="margin-top:16px"></div><div class="isi"><dl class="dl">';
-      h += '<dt>Nama</dt><dd>' + A.esc(k.nama) + '</dd>';
-      if (k.anggota && k.anggota.length) h += '<dt>' + A.labelAnggota(k.orang) + '</dt><dd>' + A.esc(A.teksAnggota(k)) + '</dd>';
+      A.daftarOrang(k).forEach(function (o, i) {
+        h += '<dt>' + (k.orang === 1 ? 'Nama' : A.esc(o.peran)) + '</dt><dd>' + A.esc(o.nama || '-') + (o.jk ? ' <small class="muted">(' + o.jk + ')</small>' : '') + '</dd>';
+      });
+      if (k.asal) h += '<dt>Asal</dt><dd>' + A.esc(k.asal) + '</dd>';
       h += '<dt>Tiket</dt><dd>' + A.esc(k.jenis_nama) + ' (' + k.orang + ' orang)</dd>';
       if (k.jumlah_anak) h += '<dt>Penitipan anak</dt><dd>' + k.jumlah_anak + ' anak (usia ' + A.esc(String(k.usia_anak).split(',').join(', ')) + ' th)</dd>';
       h += '</dl><p class="hint" style="margin-top:14px">Tunjukkan QR code ini kepada panitia saat registrasi ulang. Simpan dengan screenshot atau cetak halaman ini.</p></div></div>';

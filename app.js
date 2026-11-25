@@ -191,13 +191,31 @@
   /** Label & teks untuk anggota lain dalam satu tiket */
   function labelAnggota(orang) { return orang === 2 ? 'Pasangan' : 'Anggota grup'; }
   function teksAnggota(p) { return (p.anggota || []).join(', '); }
+  var LABEL_JK = { L: 'Laki-laki', P: 'Perempuan' };
+  /** Semua orang dalam satu tiket: [{nama, jk, peran}] — pendaftar lalu anggota */
+  function daftarOrang(p) {
+    var jk = p.jenis_kelamin || [];
+    var out = [{ nama: p.nama, jk: jk[0] || '', peran: p.orang > 2 ? 'Penanggung jawab' : 'Pendaftar' }];
+    for (var i = 0; i < Math.max(0, (p.orang || 1) - 1); i++) {
+      out.push({ nama: (p.anggota || [])[i] || '', jk: jk[i + 1] || '', peran: p.orang === 2 ? 'Pasangan' : 'Anggota ' + (i + 2) });
+    }
+    return out;
+  }
+  /** Ringkasan jumlah per jenis kelamin, mis. "1 L · 1 P" */
+  function ringkasJK(p) {
+    var l = 0, pr = 0, x = 0;
+    daftarOrang(p).forEach(function (o) { if (o.jk === 'L') l++; else if (o.jk === 'P') pr++; else x++; });
+    return [l ? l + ' L' : '', pr ? pr + ' P' : '', x ? x + ' ?' : ''].filter(Boolean).join(' · ');
+  }
   function badgeVip(p) { return p && p.vip ? ' <span class="badge vip">VIP</span>' : ''; }
 
   window.App = {
+    VERSI: '2026.11.25', // naikkan bersama semua halaman setiap rilis
+
     api: api, rupiah: rupiah, keDate: keDate, fmtTanggal: fmtTanggal, fmtJam: fmtJam, fmtWaktu: fmtWaktu,
     esc: esc, param: param, $: $, $$: $$, toast: toast, salin: salin, badge: badge, LABEL_STATUS: LABEL_STATUS,
     halaman: halaman, linkWA: linkWA, simpan: simpan, ambil: ambil, hapus: hapus, siapkanFile: siapkanFile,
     hitungMundur: hitungMundur, memuat: memuat, csv: csv, unduh: unduh,
-    labelAnggota: labelAnggota, teksAnggota: teksAnggota, badgeVip: badgeVip
+    labelAnggota: labelAnggota, LABEL_JK: LABEL_JK, daftarOrang: daftarOrang, ringkasJK: ringkasJK, teksAnggota: teksAnggota, badgeVip: badgeVip
   };
 })();
