@@ -31,7 +31,7 @@
   }
 
   function masuk(me) {
-    S.admin = me.admin; S.bank = me.bank; S.acara = me.acara; S.batasJam = me.batas_bayar_jam;
+    S.admin = me.admin; S.bank = me.bank; S.acara = me.acara; S.batasJam = me.batas_bayar_jam; S.asal = me.asal || [];
     $('#vLogin').hidden = true;
     $('#vUtama').hidden = false;
     $('#judulAcara').textContent = S.acara.nama_acara || 'Dashboard';
@@ -110,6 +110,7 @@
       ['Dana masuk', A.rupiah(h.uang)],
       ['Anak dititipkan', h.anak]
     ].map(function (s) { return '<div class="stat"><div class="angka">' + s[1] + '</div><div class="lbl">' + s[0] + '</div></div>'; }).join('');
+    renderRekap();
 
     $('#chips').innerHTML = ['semua'].concat(URUTAN_STATUS).map(function (s) {
       return '<button class="chip' + (S.filter === s ? ' aktif' : '') + '" data-f="' + s + '">' + (s === 'semua' ? 'Semua' : A.LABEL_STATUS[s]) + ' (' + (h.c[s] || 0) + ')</button>';
@@ -119,7 +120,7 @@
     var daftar = S.peserta.filter(function (p) {
       if (S.filter !== 'semua' && p.status !== S.filter) return false;
       if (!q) return true;
-      return (p.nama + A.teksAnggota(p) + p.kode + p.wa + p.nominal + p.email).toLowerCase().replace(/[.\s]/g, '').indexOf(q) >= 0;
+      return (p.nama + A.teksAnggota(p) + p.kode + p.wa + p.nominal + p.email + p.asal).toLowerCase().replace(/[.\s]/g, '').indexOf(q) >= 0;
     }).sort(function (a, b) {
       if (S.filter === 'menunggu_verifikasi') return (a.bukti_waktu || '').localeCompare(b.bukti_waktu || '');
       return (b.dibuat || '').localeCompare(a.dibuat || '');
@@ -128,8 +129,8 @@
     $('#tbPeserta').innerHTML = daftar.length ? daftar.map(function (p) {
       var klaim = p.dicek_oleh && p.dicek_oleh !== S.admin.username && p.dicek_waktu && (new Date() - new Date(p.dicek_waktu)) < 600000;
       return '<tr class="klik" data-kode="' + esc(p.kode) + '"><td><b>' + esc(p.kode) + '</b>' + A.badgeVip(p) + '</td><td>' + esc(p.nama) +
-        (p.anggota.length ? '<br><small>+ ' + esc(A.teksAnggota(p)) + '</small>' : '') + '<br><small>' + esc(p.wa) + '</small></td>' +
-        '<td>' + esc(p.jenis_nama) + (p.jumlah_anak ? '<br><small>+ ' + p.jumlah_anak + ' anak</small>' : '') + '</td>' +
+        (p.anggota.length ? '<br><small>+ ' + esc(A.teksAnggota(p)) + '</small>' : '') + '<br><small>' + esc(p.wa) + '</small>' + (p.asal ? '<br><small class="asal">' + esc(p.asal) + '</small>' : '') + '</td>' +
+        '<td>' + esc(p.jenis_nama) + (p.jenis_kelamin.length ? '<br><small>' + esc(A.ringkasJK(p)) + '</small>' : '') + (p.jumlah_anak ? '<br><small>+ ' + p.jumlah_anak + ' anak</small>' : '') + '</td>' +
         '<td class="angka">' + A.rupiah(p.nominal) + '</td><td>' + A.badge(p.status) + (klaim ? '<br><small>🔎 dicek ' + esc(p.dicek_oleh) + '</small>' : '') + '</td>' +
         '<td>' + (p.ada_bukti ? '📎' : '') + '</td><td><small>' + A.fmtWaktu(p.dibuat) + '</small></td></tr>';
     }).join('') : '<tr><td colspan="7" class="muted" style="text-align:center;padding:30px">Tidak ada data.</td></tr>';
@@ -146,12 +147,47 @@
     if (tr) bukaDetail(tr.getAttribute('data-kode'));
   });
   $('#btnCsv').addEventListener('click', function () {
-    var kol = ['kode', 'status', 'vip', 'nama', 'anggota', 'wa', 'email', 'jenis_nama', 'orang', 'jumlah_anak', 'usia_anak', 'harga_tiket', 'biaya_anak', 'kode_unik', 'nominal', 'dibuat', 'diverifikasi_oleh', 'diverifikasi_waktu', 'checkin_waktu', 'pertanyaan'];
+    var kol = ['kode', 'status', 'vip', 'nama', 'anggota', 'jenis_kelamin', 'asal', 'wa', 'email', 'jenis_nama', 'orang', 'jumlah_anak', 'usia_anak', 'harga_tiket', 'biaya_anak', 'kode_unik', 'nominal', 'dibuat', 'diverifikasi_oleh', 'diverifikasi_waktu', 'checkin_waktu', 'pertanyaan'];
     var rows = [kol].concat(S.peserta.map(function (p) {
-      return kol.map(function (k) { return k === 'anggota' ? A.teksAnggota(p) : k === 'vip' ? (p.vip ? 'VIP' : '') : p[k]; });
+      return kol.map(function (k) { return k === 'anggota' ? A.teksAnggota(p) : k === 'jenis_kelamin' ? A.ringkasJK(p) : k === 'vip' ? (p.vip ? 'VIP' : '') : p[k]; });
     }));
     A.unduh('peserta-' + new Date().toISOString().slice(0, 10) + '.csv', A.csv(rows));
   });
+  // Satu baris per orang (bukan per tiket) — untuk denah tempat duduk dan cetak sertifikat
+  $('#btnCsvOrang').addEventListener('click', function () {
+    var rows = [['kode', 'status', 'nama', 'jenis_kelamin', 'peran', 'asal', 'jenis_tiket', 'vip', 'wa_pendaftar', 'checkin_waktu']];
+    S.peserta.filter(function (p) { return p.status === 'lunas' || p.status === 'hadir'; }).forEach(function (p) {
+      A.daftarOrang(p).forEach(function (o) {
+        rows.push([p.kode, p.status, o.nama, A.LABEL_JK[o.jk] || '', o.peran, p.asal, p.jenis_nama, p.vip ? 'VIP' : '', p.wa, p.checkin_waktu]);
+      });
+    });
+    A.unduh('peserta-per-orang-' + new Date().toISOString().slice(0, 10) + '.csv', A.csv(rows));
+  });
+
+  /** Rekap peserta lunas: jenis kelamin per jenis tiket & jumlah orang per asal */
+  function renderRekap() {
+    var perTiket = {}, perAsal = {}, total = { L: 0, P: 0, x: 0 };
+    S.peserta.forEach(function (p) {
+      if (p.status !== 'lunas' && p.status !== 'hadir') return;
+      var t = perTiket[p.jenis_nama] = perTiket[p.jenis_nama] || { L: 0, P: 0, x: 0, vip: p.vip };
+      A.daftarOrang(p).forEach(function (o) { var k = o.jk === 'L' || o.jk === 'P' ? o.jk : 'x'; t[k]++; total[k]++; });
+      var a = p.asal || '(tidak diisi)';
+      if (a.indexOf('Lainnya: ') === 0) a = 'Lainnya';
+      perAsal[a] = (perAsal[a] || 0) + p.orang;
+    });
+    var baris = function (nama, x, vip) {
+      return '<tr><td>' + esc(nama) + (vip ? ' <span class="badge vip">VIP</span>' : '') + '</td><td class="angka">' + x.L + '</td><td class="angka">' + x.P + '</td>' +
+        (total.x ? '<td class="angka">' + x.x + '</td>' : '') + '<td class="angka"><b>' + (x.L + x.P + x.x) + '</b></td></tr>';
+    };
+    var h = '<div class="grid2" style="margin-top:12px"><div><h3>Jenis kelamin per tiket</h3><div class="tabel-wrap"><table><thead><tr><th>Tiket</th><th class="angka">Laki-laki</th><th class="angka">Perempuan</th>' +
+      (total.x ? '<th class="angka">Belum diisi</th>' : '') + '<th class="angka">Total</th></tr></thead><tbody>';
+    Object.keys(perTiket).sort().forEach(function (k) { h += baris(k, perTiket[k], perTiket[k].vip); });
+    h += baris('Semua', total) + '</tbody></table></div></div>';
+    h += '<div><h3>Asal peserta (orang)</h3><div class="tabel-wrap"><table><tbody>' +
+      (Object.keys(perAsal).sort().map(function (a) { return '<tr><td>' + esc(a) + '</td><td class="angka"><b>' + perAsal[a] + '</b></td></tr>'; }).join('') || '<tr><td class="muted">Belum ada peserta lunas.</td></tr>') +
+      '</tbody></table></div><p class="hint">Dihitung dari asal pendaftar utama; seluruh orang dalam satu tiket ikut asal tersebut.</p></div></div>';
+    $('#rekap').innerHTML = h;
+  }
 
   // Muat ulang otomatis tiap 60 detik saat tab peserta terbuka
   setInterval(function () {
@@ -204,8 +240,11 @@
     h += '<dt>Kode</dt><dd>' + esc(p.kode) + '</dd>';
     h += '<dt>WhatsApp</dt><dd>' + esc(p.wa) + '</dd>';
     if (p.email) h += '<dt>Email</dt><dd>' + esc(p.email) + '</dd>';
+    if (p.asal) h += '<dt>Asal</dt><dd>' + esc(p.asal) + '</dd>';
     h += '<dt>Tiket</dt><dd>' + esc(p.jenis_nama) + ' (' + p.orang + ' org)</dd>';
-    if (p.anggota.length) h += '<dt>' + A.labelAnggota(p.orang) + '</dt><dd>' + esc(A.teksAnggota(p)) + '</dd>';
+    h += '<dt>Peserta</dt><dd>' + A.daftarOrang(p).map(function (o) {
+      return esc(o.nama || '-') + ' <small class="muted">(' + (A.LABEL_JK[o.jk] || 'jenis kelamin belum diisi') + (p.orang > 1 ? ', ' + esc(o.peran) : '') + ')</small>';
+    }).join('<br>') + '</dd>';
     if (p.jumlah_anak) h += '<dt>Penitipan</dt><dd>' + p.jumlah_anak + ' anak (usia ' + esc(p.usia_anak) + ')</dd>';
     h += '<dt>Didaftar</dt><dd>' + A.fmtWaktu(p.dibuat) + '</dd>';
     if (p.pertanyaan) h += '<dt>Pertanyaan</dt><dd style="font-weight:400">' + esc(p.pertanyaan) + '</dd>';
@@ -291,19 +330,31 @@
   }
 
   function panelUbah(p) {
-    $('#panelAksi').innerHTML = '<div class="card" style="margin-top:14px;box-shadow:none"><h3>Ubah data / alihkan tiket</h3>' +
-      '<p class="hint">Untuk mengalihkan tiket ke orang lain, ganti nama dan nomor WA-nya. Perubahan tercatat di Log.</p>' +
-      '<div class="grid2"><div><label>Nama</label><input type="text" id="uNama" value="' + esc(p.nama) + '"></div>' +
-      '<div><label>Nomor WA</label><input type="tel" id="uWa" value="' + esc(p.wa) + '"></div>' +
+    var orang = A.daftarOrang(p);
+    var jkPilih = function (i, v) {
+      return '<select class="uJK" data-i="' + i + '" style="max-width:160px"><option value="">Jenis kelamin…</option>' +
+        '<option value="L"' + (v === 'L' ? ' selected' : '') + '>Laki-laki</option><option value="P"' + (v === 'P' ? ' selected' : '') + '>Perempuan</option></select>';
+    };
+    var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h3>Ubah data / alihkan tiket</h3>' +
+      '<p class="hint">Untuk koreksi nama sertifikat atau mengalihkan tiket ke orang lain. Perubahan tercatat di Log.</p>' +
+      '<label>' + (p.orang > 2 ? 'Penanggung jawab' : 'Nama pendaftar') + '</label><div class="baris-isi"><input type="text" id="uNama" value="' + esc(p.nama) + '">' + jkPilih(0, orang[0].jk) + '</div>';
+    for (var i = 1; i < orang.length; i++) {
+      h += '<label>' + esc(orang[i].peran) + '</label><div class="baris-isi"><input type="text" class="uAnggota" value="' + esc(orang[i].nama) + '">' + jkPilih(i, orang[i].jk) + '</div>';
+    }
+    h += '<div class="grid2"><div><label>Nomor WA</label><input type="tel" id="uWa" value="' + esc(p.wa) + '"></div>' +
       '<div><label>Email</label><input type="email" id="uEmail" value="' + esc(p.email) + '"></div>' +
-      '</div>' + (p.orang > 1 ? '<label>' + (p.orang === 2 ? 'Nama pasangan' : 'Nama anggota grup (selain penanggung jawab)') + '</label>' +
-        Array.apply(null, Array(p.orang - 1)).map(function (_, i) {
-          return '<input type="text" class="uAnggota" style="margin-bottom:8px" placeholder="' + (p.orang === 2 ? 'Nama pasangan' : 'Anggota ' + (i + 2)) + '" value="' + esc(p.anggota[i] || '') + '">';
-        }).join('') : '') +
+      '<div><label>Asal</label><input type="text" id="uAsal" list="daftarAsalAdmin" value="' + esc(p.asal) + '" placeholder="Pilih dari daftar atau Lainnya: …">' +
+      '<datalist id="daftarAsalAdmin">' + (S.asal || []).map(function (a) { return '<option value="' + esc(a) + '">'; }).join('') + '</datalist>' +
+      '<div class="hint">Isi persis seperti pilihan di daftar, atau awali dengan "Lainnya: ".</div></div></div>' +
       '<button class="btn" id="simpanUbah" style="margin-top:14px">Simpan perubahan</button></div>';
+    $('#panelAksi').innerHTML = h;
     $('#simpanUbah').addEventListener('click', function () {
       this.disabled = true;
-      apiA('ubahData', { kode: p.kode, data: { nama: $('#uNama').value, wa: $('#uWa').value, email: $('#uEmail').value, anggota: $$('.uAnggota').map(function (i) { return i.value; }) } })
+      apiA('ubahData', { kode: p.kode, data: {
+        nama: $('#uNama').value, wa: $('#uWa').value, email: $('#uEmail').value, asal: $('#uAsal').value,
+        anggota: $$('.uAnggota').map(function (i) { return i.value; }),
+        jenis_kelamin: $$('.uJK').map(function (s) { return s.value; })
+      } })
         .then(function (r) { A.toast('Data tersimpan.'); perbaruiLokal(r.peserta); bukaDetail(p.kode); })
         .catch(function (e) { A.toast(e.message, true); $('#simpanUbah').disabled = false; });
     });
@@ -496,6 +547,14 @@
     h += '<div>' + f('kontak_wa', 'Nomor WA panitia (bantuan)', 'tel', 'placeholder="08…"') + '</div>';
     h += '</div></div>';
 
+    h += '<div class="card"><h2>Formulir pendaftaran</h2>' +
+      '<label for="c_asal_daftar">Pilihan asal peserta <span class="opsional">(satu per baris)</span></label>' +
+      '<textarea id="c_asal_daftar" data-k="asal_daftar" style="min-height:130px" placeholder="Contoh:&#10;SAI Unit A&#10;SAI Unit B&#10;Komunitas lain&#10;Umum">' + esc(String(c.asal_daftar || '').split('|').join('\n')) + '</textarea>' +
+      '<div class="hint">Pilihan <b>Lainnya…</b> (dengan isian bebas) otomatis ditambahkan di akhir. Kosongkan jika pertanyaan asal tidak diperlukan.</div>' +
+      '<label class="cek" style="margin-top:16px"><input type="checkbox" id="c_pertanyaan_aktif"' + (c.pertanyaan_aktif !== 'tidak' ? ' checked' : '') + '> <span>Tampilkan kolom <b>Pertanyaan atau topik yang ingin dibahas</b> (opsional untuk peserta). Jika dimatikan, kolom ini hilang dari formulir.</span></label>' +
+      '<label for="c_catatan_nama">Catatan penulisan nama</label>' +
+      '<textarea id="c_catatan_nama" data-k="catatan_nama">' + esc(c.catatan_nama) + '</textarea>' +
+      '<div class="hint">Muncul di bawah kolom nama. Bisa ditambah aturan gelar atau tenggat koreksi nama, misalnya "Tanpa gelar. Koreksi nama paling lambat H-3".</div></div>';
     h += '<div class="card"><h2>B. Jenis tiket & harga</h2>';
     h += '<div class="grid2"><div>' + f('kapasitas_total', 'Kapasitas total (orang)', 'number', 'min="1"', 'Sudah terdaftar: <b>' + t.orang + ' orang</b>') + '</div><div id="cekKapasitas" style="padding-top:38px"></div></div>';
     h += '<div class="tabel-wrap" style="margin-top:14px"><table><thead><tr><th>Nama tiket &amp; keterangan</th><th>Harga normal</th><th>Harga early bird</th><th>Orang/tiket</th><th>Kuota (tiket)</th><th class="angka">Kursi</th><th>Terjual*</th><th>VIP</th><th>Aktif</th><th></th></tr></thead><tbody id="tbJenis"></tbody></table></div>';
@@ -589,6 +648,7 @@
     var c = {};
     $$('#pIsi [data-k]').forEach(function (el) { c[el.getAttribute('data-k')] = el.value; });
     c.penitipan_aktif = $('#c_penitipan_aktif').checked ? 'ya' : 'tidak';
+    c.pertanyaan_aktif = $('#c_pertanyaan_aktif').checked ? 'ya' : 'tidak';
     return { config: c, jenis_tiket: S.jenisEdit.map(function (j) { return { id: j.id, nama: j.nama, harga_normal: j.harga_normal, harga_eb: j.harga_eb, orang: j.orang, kuota: j.kuota, aktif: !!j.aktif, vip: !!j.vip, keterangan: j.keterangan || '' }; }) };
   }
 
@@ -602,7 +662,7 @@
     apiA('simpanPengaturan', d).then(function (r) {
       A.toast(r.pesan);
       return apiA('me').then(function (me) {
-        S.bank = me.bank; S.acara = me.acara; S.batasJam = me.batas_bayar_jam;
+        S.bank = me.bank; S.acara = me.acara; S.batasJam = me.batas_bayar_jam; S.asal = me.asal || [];
         $('#mBank').textContent = S.bank; $('#judulAcara').textContent = S.acara.nama_acara;
       }).then(muatPengaturan);
     }).catch(function (e) {
@@ -620,6 +680,9 @@
       acara: { nama_acara: c.nama_acara, deskripsi: c.deskripsi, tanggal_acara: c.tanggal_acara, lokasi: c.lokasi, link_maps: c.link_maps, kontak_wa: c.kontak_wa },
       status: 'buka', buka: c.buka, tutup: c.tutup, early_bird: eb, early_bird_akhir: c.early_bird_akhir,
       batas_bayar_jam: Number(c.batas_bayar_jam) || 24,
+      asal: String(c.asal_daftar || '').split(/[\n|]/).map(function (x) { return x.trim(); }).filter(function (x) { return x && x.toLowerCase() !== 'lainnya'; }),
+      catatan_nama: c.catatan_nama,
+      pertanyaan_aktif: c.pertanyaan_aktif === 'ya',
       tiket: S.jenisEdit.filter(function (j) { return j.aktif; }).map(function (j) {
         return { id: j.id || ('baru' + Math.random()), nama: j.nama, orang: j.orang, vip: !!j.vip, keterangan: j.keterangan || '', harga: (eb && j.harga_eb) ? j.harga_eb : j.harga_normal, harga_normal: j.harga_normal, sisa: Math.max(0, j.kuota - j.terpakai) };
       }),

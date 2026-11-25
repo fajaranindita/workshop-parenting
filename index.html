@@ -82,10 +82,18 @@
       h += '</div>';
 
       h += '<label for="nama">Nama lengkap</label><input id="nama" type="text" autocomplete="name" maxlength="100" required>';
+      if (info.catatan_nama) h += '<div class="hint catatan-nama">✎ ' + A.esc(info.catatan_nama) + '</div>';
+      h += '<label>Jenis kelamin</label>' + pilihJK(0);
       h += '<div id="blokAnggota" hidden></div>';
       h += '<label for="wa">Nomor WhatsApp</label><input id="wa" type="tel" inputmode="tel" placeholder="08xxxxxxxxxx" autocomplete="tel" required>';
       h += '<div class="hint">E-tiket dan info acara akan dikirim lewat WhatsApp.</div>';
       h += '<label for="email">Email <span class="opsional">(opsional)</span></label><input id="email" type="email" autocomplete="email">';
+      if (info.asal && info.asal.length) {
+        h += '<label for="asal">Asal / unit</label><select id="asal"><option value="">— Pilih asal Anda —</option>';
+        info.asal.forEach(function (o) { h += '<option value="' + A.esc(o) + '">' + A.esc(o) + '</option>'; });
+        h += '<option value="__lain">Lainnya…</option></select>';
+        h += '<input id="asalLain" type="text" maxlength="60" placeholder="Tulis asal Anda" hidden style="margin-top:8px">';
+      }
 
       var pt = info.penitipan;
       if (pt.aktif) {
@@ -93,10 +101,11 @@
         h += '<div id="blokAnak" hidden style="margin-top:10px"><div id="daftarAnak"></div><button type="button" class="btn sekunder kecil" id="tambahAnak">+ Tambah anak</button></div></div>';
       }
 
-      h += '<label for="tanya">Pertanyaan atau topik yang ingin dibahas <span class="opsional">(opsional)</span></label><textarea id="tanya" maxlength="500" placeholder="Misalnya: cara menghadapi tantrum anak usia 3 tahun"></textarea>';
+      if (info.pertanyaan_aktif !== false) h += '<label for="tanya">Pertanyaan atau topik yang ingin dibahas <span class="opsional">(opsional)</span></label><textarea id="tanya" maxlength="500" placeholder="Misalnya: cara menghadapi tantrum anak usia 3 tahun"></textarea>';
 
       h += '<div class="ringkasan" id="ringkasan"></div>';
-      h += '<label class="cek" style="margin-top:14px"><input type="checkbox" id="setuju"> <span>Saya setuju data di atas digunakan panitia hanya untuk keperluan acara ini.</span></label>';
+      h += '<label class="cek" style="margin-top:14px"><input type="checkbox" id="cekNama"> <span>Saya sudah memeriksa penulisan nama' + '<span id="cekNamaSemua"></span>' + ' dan sudah benar.</span></label>';
+      h += '<label class="cek" style="margin-top:10px"><input type="checkbox" id="setuju"> <span>Saya setuju data di atas digunakan panitia hanya untuk keperluan acara ini.</span></label>';
       h += '<div id="pesanError" class="banner danger" hidden style="margin-top:14px"></div>';
       h += '<button class="btn blok" id="kirim" type="submit" style="margin-top:16px">Daftar &amp; Lanjut ke Pembayaran</button>';
       h += '<p class="hint" style="text-align:center;margin-top:10px">Batas pembayaran ' + info.batas_bayar_jam + ' jam setelah mendaftar.</p>';
@@ -133,21 +142,38 @@
       perbaruiRingkasan();
     }
 
-    /** Kolom nama anggota: pasangan (wajib) atau anggota grup (opsional) */
+    /** Pilihan jenis kelamin untuk orang ke-i (0 = pendaftar) */
+    function pilihJK(i) {
+      return '<div class="jk" role="radiogroup">' +
+        '<label><input type="radio" name="jk' + i + '" value="L"> Laki-laki</label>' +
+        '<label><input type="radio" name="jk' + i + '" value="P"> Perempuan</label></div>';
+    }
+    function nilaiJK(i) { var r = A.$('input[name=jk' + i + ']:checked'); return r ? r.value : ''; }
+
+    /** Kolom nama + jenis kelamin anggota lain: pasangan atau anggota grup (semua wajib) */
     function renderAnggota(t) {
       var blok = A.$('#blokAnggota');
-      var lama = A.$$('.namaAnggota').map(function (i) { return i.value; });
+      var lamaNama = A.$$('.namaAnggota').map(function (i) { return i.value; });
+      var lamaJK = lamaNama.map(function (_, i) { return nilaiJK(i + 1); });
+      A.$('#cekNamaSemua').textContent = t && t.orang > 2 ? ' semua anggota' : (t && t.orang === 2 ? ' saya dan pasangan' : '');
       if (!t || t.orang < 2) { blok.hidden = true; blok.innerHTML = ''; return; }
       var h = '';
       if (t.orang === 2) {
-        h = '<label for="anggota0">Nama pasangan</label><input id="anggota0" class="namaAnggota" type="text" maxlength="100">';
+        h = '<div class="orang-blok"><label for="anggota0">Nama pasangan</label><input id="anggota0" class="namaAnggota" type="text" maxlength="100">' +
+          '<label>Jenis kelamin pasangan</label>' + pilihJK(1) + '</div>';
       } else {
-        h = '<label>Nama anggota grup <span class="opsional">(opsional, boleh diisi sebagian)</span></label>';
-        h += '<div class="hint" style="margin:-2px 0 8px">Anda tercatat sebagai anggota 1 sekaligus penanggung jawab grup. Satu e-tiket berlaku untuk ' + t.orang + ' orang.</div>';
-        for (var i = 0; i < t.orang - 1; i++) h += '<input class="namaAnggota" type="text" maxlength="100" placeholder="Anggota ' + (i + 2) + '" style="margin-bottom:8px">';
+        h = '<div class="hint" style="margin-top:14px">Anda tercatat sebagai <b>anggota 1</b> sekaligus penanggung jawab grup. Satu e-tiket berlaku untuk ' + t.orang + ' orang. Isi nama lengkap dan jenis kelamin semua anggota (dipakai untuk sertifikat dan pengaturan tempat duduk).</div>';
+        for (var i = 0; i < t.orang - 1; i++) {
+          h += '<div class="orang-blok"><label for="anggota' + i + '">Anggota ' + (i + 2) + '</label>' +
+            '<input id="anggota' + i + '" class="namaAnggota" type="text" maxlength="100" placeholder="Nama lengkap anggota ' + (i + 2) + '">' +
+            pilihJK(i + 1) + '</div>';
+        }
       }
       blok.innerHTML = h; blok.hidden = false;
-      A.$$('.namaAnggota').forEach(function (inp, i) { if (lama[i]) inp.value = lama[i]; });
+      A.$$('.namaAnggota').forEach(function (inp, i) {
+        if (lamaNama[i]) inp.value = lamaNama[i];
+        if (lamaJK[i]) { var r = A.$('input[name=jk' + (i + 1) + '][value=' + lamaJK[i] + ']'); if (r) r.checked = true; }
+      });
     }
 
     function perbaruiRingkasan() {
@@ -183,6 +209,12 @@
           if (e.target.classList.contains('hapusAnak')) { e.target.parentNode.remove(); perbaruiRingkasan(); }
         });
       }
+      var selAsal = A.$('#asal');
+      if (selAsal) selAsal.addEventListener('change', function () {
+        var lain = selAsal.value === '__lain';
+        A.$('#asalLain').hidden = !lain;
+        if (lain) A.$('#asalLain').focus();
+      });
       perbaruiRingkasan();
       A.$('#form').addEventListener('submit', kirim);
     }
@@ -197,6 +229,10 @@
       e.preventDefault();
       A.$('#pesanError').hidden = true;
       var t = jenisDipilih();
+      var selAsal = A.$('#asal'), asal = '';
+      if (selAsal) asal = selAsal.value === '__lain' ? 'Lainnya: ' + A.$('#asalLain').value.trim() : selAsal.value;
+      var jk = [];
+      for (var i = 0; i < (t ? t.orang : 1); i++) jk.push(nilaiJK(i));
       var data = {
         jenis_id: t ? t.id : '',
         nama: A.$('#nama').value.trim(),
@@ -204,16 +240,25 @@
         wa: A.$('#wa').value.trim(),
         email: A.$('#email').value.trim(),
         usia_anak: usiaAnak(),
-        pertanyaan: A.$('#tanya').value.trim(),
+        pertanyaan: A.$('#tanya') ? A.$('#tanya').value.trim() : '',
+        asal: asal,
+        jenis_kelamin: jk,
         persetujuan: A.$('#setuju').checked
       };
       if (!t) return tampilError('Silakan pilih jenis tiket.');
       if (data.nama.length < 3) return tampilError('Nama lengkap wajib diisi.');
-      if (t.orang === 2 && (data.anggota[0] || '').length < 2) return tampilError('Nama pasangan wajib diisi.');
+      if (!jk[0]) return tampilError('Pilih jenis kelamin Anda.');
+      for (var j = 0; j < t.orang - 1; j++) {
+        var label = t.orang === 2 ? 'pasangan' : 'anggota ' + (j + 2);
+        if ((data.anggota[j] || '').length < 2) return tampilError('Nama ' + label + ' wajib diisi.');
+        if (!jk[j + 1]) return tampilError('Pilih jenis kelamin ' + label + '.');
+      }
       if (data.wa.replace(/\D/g, '').length < 9) return tampilError('Nomor WhatsApp tidak valid.');
       var pt = info.penitipan;
       var usiaSalah = data.usia_anak.some(function (u) { return u === '' || +u < pt.usia_min || +u > pt.usia_maks; });
       if (usiaSalah) return tampilError('Isi usia anak antara ' + pt.usia_min + '–' + pt.usia_maks + ' tahun.');
+      if (selAsal && (!selAsal.value || (selAsal.value === '__lain' && asal.length < 11))) return tampilError('Silakan pilih atau tulis asal Anda.');
+      if (!A.$('#cekNama').checked) return tampilError('Mohon periksa penulisan nama, lalu centang konfirmasinya.');
       if (!data.persetujuan) return tampilError('Mohon centang persetujuan penggunaan data.');
       if (pratinjau) { A.toast('Mode pratinjau: formulir valid, tidak dikirim.'); return; }
 
