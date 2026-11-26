@@ -480,3 +480,26 @@ code { background: var(--primary-soft); padding: 1px 5px; border-radius: 4px; fo
 .jt-chips .chip { cursor: default; }
 .jt-hapus-tgl { background: none; border: 0; color: inherit; font-weight: 800; cursor: pointer; padding: 0 0 0 4px; }
 @media (max-width: 800px) { .jt-grid { grid-template-columns: 1fr 1fr; } .jt-grid .jt-lebar, .jt-grid .jt-jadwal { grid-column: span 2; } }
+
+/* ---------- Logo di landing page ---------- */
+.lp-logo { display: inline-flex; align-items: center; justify-content: center; line-height: 0; flex-shrink: 0; }
+.lp-logo img { display: block; width: auto; max-width: 100%; }
+.lp-logo-putih { background: #fff; border-radius: 12px; padding: 6px 10px; }
+.lp-logo-header img { height: 44px; }
+.lp-logo-header.lp-logo-putih { padding: 4px 8px; border-radius: 8px; }
+.lp-logo-hero { align-self: flex-start; }
+.lp-logo-hero.lp-logo-kecil img { height: 56px; }
+.lp-logo-hero.lp-logo-sedang img { height: 80px; }
+.lp-logo-hero.lp-logo-besar img { height: 112px; }
+.lp-logo-penutup.lp-logo-kecil img { height: 64px; }
+.lp-logo-penutup.lp-logo-sedang img { height: 96px; }
+.lp-logo-penutup.lp-logo-besar img { height: 132px; }
+.lp-logo-footer { margin-bottom: 10px; }
+.lp-logo-footer img { height: 40px; }
+@media (max-width: 640px) {
+  .lp-logo-header img { height: 34px; }
+  .lp-logo-hero.lp-logo-besar img, .lp-logo-penutup.lp-logo-besar img { height: 96px; }
+}
+.logo-pratinjau { background: var(--primary); border-radius: 10px; padding: 14px; display: flex; justify-content: center; }
+.logo-pratinjau img { max-height: 90px; max-width: 100%; background: #fff; border-radius: 10px; padding: 6px 10px; }
+.logo-pratinjau.tanpa-latar img { background: none; padding: 0; }

@@ -1,5 +1,5 @@
 /* Landing page — dirender dari data `publik` (isi teks diatur di dashboard, tab Landing Page) */
-window.LANDING_VERSI = '2026.11.26g';
+window.LANDING_VERSI = '2026.11.26h';
 (function () {
   'use strict';
   var A = window.App;
@@ -34,15 +34,23 @@ window.LANDING_VERSI = '2026.11.26g';
     };
     var h = '';
 
+    /** Logo penyelenggara di posisi tertentu (header / hero / penutup / footer), sesuai pengaturan */
+    var logo = function (tempat) {
+      var g = L.logo || {};
+      if (!g.aktif || !g.file || !g['di_' + tempat]) return '';
+      return '<span class="lp-logo lp-logo-' + tempat + ' lp-logo-' + esc(g.ukuran || 'sedang') + (g.latar === 'tanpa' ? '' : ' lp-logo-putih') + '">' +
+        '<img src="' + esc(g.file) + '" alt="Logo ' + t(L.header.organisasi || '') + '"></span>';
+    };
+
     // ---------- Header ----------
     h += '<header class="lp-header"><div class="lp-isi lp-baris">';
-    h += '<div class="lp-merek"><span class="lp-org">' + t(L.header.organisasi) + '</span>';
+    h += '<div class="lp-merek">' + logo('header') + '<span class="lp-org">' + t(L.header.organisasi) + '</span>';
     if (ada(L.header.label)) h += '<span class="lp-garis"></span><span class="lp-label">' + t(L.header.label) + '</span>';
     h += '</div><a class="lp-btn lp-btn-emas lp-btn-kecil" href="#harga">' + t(L.header.tombol || 'Pesan Tiket') + '</a></div></header>';
 
     // ---------- Hero ----------
     h += '<section class="lp-hero"><div class="lp-isi lp-dua">';
-    h += '<div class="lp-hero-teks"><div class="lp-lencana">';
+    h += '<div class="lp-hero-teks">' + logo('hero') + '<div class="lp-lencana">';
     if (info.early_bird) h += '<span class="lp-lencana-merah">EARLY BIRD</span>';
     if (ada(L.hero.lencana)) h += '<span class="lp-lencana-garis">' + t(L.hero.lencana) + '</span>';
     h += '</div><h1>' + t(L.hero.judul || a.nama_acara) + '</h1>';
@@ -132,7 +140,7 @@ window.LANDING_VERSI = '2026.11.26g';
 
     // ---------- Penutup ----------
     var p = L.penutup;
-    h += '<section class="lp-hijau lp-sesi lp-penutup"><div class="lp-isi lp-sempit lp-tumpuk lp-tengah-teks">';
+    h += '<section class="lp-hijau lp-sesi lp-penutup"><div class="lp-isi lp-sempit lp-tumpuk lp-tengah-teks">' + logo('penutup');
     if (ada(p.judul1) || ada(p.judul2)) h += '<h2 class="lp-judul-penutup">' + t(p.judul1) + (ada(p.judul2) ? '<br><span>' + t(p.judul2) + '</span>' : '') + '</h2>';
     if (ada(p.deskripsi)) h += '<p class="lp-lead">' + t(p.deskripsi) + '</p>';
     h += '<div class="lp-cta lp-cta-tengah"><a class="lp-btn lp-btn-emas lp-btn-besar" href="#harga">' + t(L.hero.tombol || 'Pesan Tiket') + '</a></div>';
@@ -143,7 +151,8 @@ window.LANDING_VERSI = '2026.11.26g';
       }).join('') + '</div>';
     }
     h += '</div></section>';
-    if (ada(L.footer)) h += '<footer class="lp-footer">' + t(L.footer) + '</footer>';
+    var logoFooter = logo('footer');
+    if (ada(L.footer) || logoFooter) h += '<footer class="lp-footer">' + (logoFooter ? '<div>' + logoFooter + '</div>' : '') + t(L.footer) + '</footer>';
 
     el.innerHTML = h;
     document.title = a.nama_acara || 'Pendaftaran';

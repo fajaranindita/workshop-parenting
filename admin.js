@@ -1,5 +1,5 @@
 /* Dashboard panitia */
-window.ADMIN_VERSI = '2026.11.26g';
+window.ADMIN_VERSI = '2026.11.26h';
 (function () {
   'use strict';
   var A = App, $ = A.$, $$ = A.$$, esc = A.esc;
@@ -807,6 +807,26 @@ window.ADMIN_VERSI = '2026.11.26g';
     h += '<label class="cek"><input type="checkbox" id="lAktif"' + (S.landing.aktif ? ' checked' : '') + '> <span><b>Tampilkan landing page</b> di halaman utama. Jika dimatikan, pengunjung langsung melihat formulir pendaftaran.</span></label>';
     h += '<p class="hint" style="margin-top:10px">Tanggal, jam, lokasi, harga, early bird, dan sisa kuota diambil otomatis dari <b>Pengaturan Acara</b>. Di semua teks bisa dipakai kode <code>{tanggal}</code>, <code>{jam}</code>, <code>{lokasi}</code>, dan <code>{nama_acara}</code>. Bagian yang dikosongkan tidak ditampilkan.</p></div>';
 
+    var LOGO_ADA = [['assets/logo/logo-sai.png', 'Logo memanjang (latar putih)'], ['assets/logo/logo-sai-bulat.png', 'Logo bulat'], ['assets/logo/logo-sai-balon.png', 'Logo balon percakapan']];
+    var g = L.logo || {}, fileLogo = g.file || '';
+    var dikenal = LOGO_ADA.some(function (x) { return x[0] === fileLogo; });
+    var cekL = function (jalur, label) { return '<label class="cek" style="margin:6px 0"><input type="checkbox" data-l-bool="' + jalur + '"' + (ambilJalur(L, jalur) ? ' checked' : '') + '> <span>' + label + '</span></label>'; };
+    h += '<div class="card"><h2>Logo</h2>';
+    h += cekL('logo.aktif', '<b>Tampilkan logo</b> di landing page');
+    h += '<div class="grid2"><div><label>File logo</label><select id="lLogoPilih">' + LOGO_ADA.map(function (x) {
+      return '<option value="' + x[0] + '"' + (x[0] === fileLogo ? ' selected' : '') + '>' + x[1] + '</option>';
+    }).join('') + '<option value="__lain"' + (dikenal ? '' : ' selected') + '>Logo lain (tulis alamat file)…</option></select>' +
+      '<input type="text" id="lLogoFile" data-l="logo.file" value="' + esc(fileLogo) + '" placeholder="assets/logo/nama-file.png atau https://…" style="margin-top:8px"' + (dikenal ? ' hidden' : '') + '>' +
+      '<div class="hint">Logo lain: unggah file PNG/JPG ke folder <code>assets/logo/</code> di GitHub, lalu tulis <code>assets/logo/nama-file.png</code>.</div>';
+    h += '<label>Latar logo</label><select data-l="logo.latar"><option value="putih"' + (g.latar !== 'tanpa' ? ' selected' : '') + '>Kotak putih (untuk logo berlatar putih)</option><option value="tanpa"' + (g.latar === 'tanpa' ? ' selected' : '') + '>Tanpa latar (untuk logo bulat/transparan)</option></select>';
+    h += '<label>Ukuran di bagian pembuka & penutup</label><select data-l="logo.ukuran">' + [['kecil', 'Kecil'], ['sedang', 'Sedang'], ['besar', 'Besar']].map(function (x) {
+      return '<option value="' + x[0] + '"' + ((g.ukuran || 'sedang') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>';
+    }).join('') + '</select></div>';
+    h += '<div><label>Tampil di</label>' + cekL('logo.di_header', 'Header (kiri atas, di samping nama penyelenggara)') + cekL('logo.di_hero', 'Bagian pembuka (di atas judul besar)') +
+      cekL('logo.di_penutup', 'Bagian penutup (di atas kalimat penutup)') + cekL('logo.di_footer', 'Footer (paling bawah)') +
+      '<label>Pratinjau</label><div class="logo-pratinjau"><img id="lLogoGambar" src="' + esc(fileLogo) + '" alt="Pratinjau logo"></div>' +
+      '<div class="hint">Kosongkan nama penyelenggara di bagian 1 jika header cukup menampilkan logo saja.</div></div></div></div>';
+
     h += '<div class="card"><h2>1. Header & pembuka</h2><div class="grid2">';
     h += '<div>' + teks('header.organisasi', 'Nama penyelenggara (kiri atas)') + '</div><div>' + teks('header.label', 'Label di samping nama', 'Misalnya SQUAD 23') + '</div>';
     h += '<div>' + teks('hero.lencana', 'Lencana', 'Lencana merah EARLY BIRD muncul otomatis selama masa early bird') + '</div><div>' + teks('header.tombol', 'Tombol di header') + '</div></div>';
@@ -848,6 +868,17 @@ window.ADMIN_VERSI = '2026.11.26g';
     h += '<div class="card" style="position:sticky;bottom:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
       '<button class="btn" id="lSimpan">Simpan landing page</button><button class="btn sekunder" id="lPratinjau">Pratinjau</button><span class="hint" id="lPesan"></span></div>';
     $('#lIsi').innerHTML = h;
+    var pilihLogo = $('#lLogoPilih'), isiLogo = $('#lLogoFile'), gambarLogo = $('#lLogoGambar');
+    var perbaruiLogo = function () {
+      if (pilihLogo.value !== '__lain') isiLogo.value = pilihLogo.value;
+      isiLogo.hidden = pilihLogo.value !== '__lain';
+      gambarLogo.src = isiLogo.value;
+      gambarLogo.parentNode.classList.toggle('tanpa-latar', $('[data-l="logo.latar"]').value === 'tanpa');
+    };
+    pilihLogo.addEventListener('change', perbaruiLogo);
+    isiLogo.addEventListener('change', perbaruiLogo);
+    $('[data-l="logo.latar"]').addEventListener('change', perbaruiLogo);
+    perbaruiLogo();
     renderFaq(L.faq || []);
     $('#lTambahFaq').addEventListener('click', function () { var f = kumpulkanFaq(); f.push({ t: '', j: '' }); renderFaq(f); });
     $('#lSimpan').addEventListener('click', simpanLanding);
@@ -885,6 +916,7 @@ window.ADMIN_VERSI = '2026.11.26g';
         return o;
       }));
     });
+    $$('#lIsi [data-l-bool]').forEach(function (el) { setelJalur(L, el.getAttribute('data-l-bool'), el.checked); });
     L.faq = kumpulkanFaq().filter(function (q) { return q.t; });
     L.ahad = $('#lAhad').checked;
     return L;
