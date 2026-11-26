@@ -1,5 +1,5 @@
 /* Landing page — dirender dari data `publik` (isi teks diatur di dashboard, tab Landing Page) */
-window.LANDING_VERSI = '2026.11.26b';
+window.LANDING_VERSI = '2026.11.26c';
 (function () {
   'use strict';
   var A = window.App;
@@ -27,6 +27,11 @@ window.LANDING_VERSI = '2026.11.26b';
     var t = function (s) { return esc(token(s)); };
     var kontak = (L.penutup.kontak || []).filter(function (k) { return k.wa; });
     var waTanya = kontak[0] ? kontak[0].wa : a.kontak_wa;
+    // Tautan WhatsApp dengan pesan pembuka yang diatur di dashboard
+    var linkWA = function (nomor, namaKontak) {
+      var pesan = token(L.penutup.pesan_wa || '').replace(/\{nama_kontak\}/g, namaKontak || 'Panitia').trim();
+      return 'https://wa.me/' + String(nomor).replace(/\D/g, '') + (pesan ? '?text=' + encodeURIComponent(pesan) : '');
+    };
     var h = '';
 
     // ---------- Header ----------
@@ -48,7 +53,7 @@ window.LANDING_VERSI = '2026.11.26b';
     if (a.lokasi) h += '<span>' + IKON.lokasi + (a.link_maps ? '<a href="' + esc(a.link_maps) + '" target="_blank" rel="noopener">' + esc(a.lokasi) + '</a>' : esc(a.lokasi)) + '</span>';
     h += '</div><div class="lp-cta">';
     h += '<a class="lp-btn lp-btn-emas lp-btn-besar" href="#harga">' + t(L.hero.tombol || 'Pesan Tiket') + '</a>';
-    if (waTanya && ada(L.hero.tanya)) h += '<a class="lp-tautan-terang" target="_blank" rel="noopener" href="https://wa.me/' + esc(waTanya) + '">' + t(L.hero.tanya) + '</a>';
+    if (waTanya && ada(L.hero.tanya)) h += '<a class="lp-tautan-terang" target="_blank" rel="noopener" href="' + esc(linkWA(waTanya, kontak[0] ? kontak[0].nama : '')) + '">' + t(L.hero.tanya) + '</a>';
     h += '</div></div>';
     if (ada(L.hero.foto)) h += '<div class="lp-hero-foto"><div class="lp-bingkai"><img src="' + esc(L.hero.foto) + '" alt="' + t(L.hero.foto_alt) + '"></div></div>';
     h += '</div></section>';
@@ -133,7 +138,7 @@ window.LANDING_VERSI = '2026.11.26b';
     h += '<div class="lp-cta lp-cta-tengah"><a class="lp-btn lp-btn-emas lp-btn-besar" href="#harga">' + t(L.hero.tombol || 'Pesan Tiket') + '</a></div>';
     if (kontak.length) {
       h += '<div class="lp-kontak">' + kontak.map(function (k) {
-        return '<a class="lp-kontak-kartu" target="_blank" rel="noopener" href="https://wa.me/' + esc(k.wa) + '">' + IKON.wa +
+        return '<a class="lp-kontak-kartu" target="_blank" rel="noopener" href="' + esc(linkWA(k.wa, k.nama)) + '">' + IKON.wa +
           '<span><b>' + t(k.nama) + '</b><small>+' + esc(formatNomor(k.wa)) + '</small></span></a>';
       }).join('') + '</div>';
     }

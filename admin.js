@@ -1,5 +1,5 @@
 /* Dashboard panitia */
-window.ADMIN_VERSI = '2026.11.26b';
+window.ADMIN_VERSI = '2026.11.26c';
 (function () {
   'use strict';
   var A = App, $ = A.$, $$ = A.$$, esc = A.esc;
@@ -832,6 +832,7 @@ window.ADMIN_VERSI = '2026.11.26b';
 
     h += '<div class="card"><h2>8. Penutup & kontak</h2><div class="grid2"><div>' + teks('penutup.judul1', 'Judul baris 1') + '</div><div>' + teks('penutup.judul2', 'Judul baris 2 (emas)') + '</div></div>' +
       teks('penutup.deskripsi', 'Kalimat di bawah judul') + pasang('penutup.kontak', 'nama,wa', 'Kontak WhatsApp', 'Nama | Nomor WA') +
+      teks('penutup.pesan_wa', 'Pesan pembuka WhatsApp', 'Otomatis terisi saat pengunjung mengklik "Tanya dulu via WhatsApp" atau kartu kontak. Bisa memakai <code>{nama_kontak}</code> (nama kontak yang diklik), <code>{nama_acara}</code>, <code>{tanggal}</code>, <code>{jam}</code>, <code>{lokasi}</code>. Kosongkan jika tidak perlu pesan pembuka.', true) +
       teks('footer', 'Teks footer') +
       '<label class="cek" style="margin-top:14px"><input type="checkbox" id="lAhad"' + (L.ahad ? ' checked' : '') + '> <span>Tulis hari Minggu sebagai <b>Ahad</b></span></label></div>';
 
