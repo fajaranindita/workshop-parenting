@@ -1,5 +1,5 @@
 /* Dashboard panitia */
-window.ADMIN_VERSI = '2026.11.26c';
+window.ADMIN_VERSI = '2026.11.26d';
 (function () {
   'use strict';
   var A = App, $ = A.$, $$ = A.$$, esc = A.esc;
@@ -622,7 +622,7 @@ window.ADMIN_VERSI = '2026.11.26c';
         (j.terpakai ? '' : '<button class="btn sekunder kecil" data-hapus="' + i + '" type="button">Hapus</button>') + '</div>';
       h += '<div class="jt-grid">';
       h += '<div class="jt-lebar"><label>Nama tiket</label><input type="text" data-f="nama" value="' + esc(j.nama) + '" placeholder="Misalnya: Pre-sale Bazar Sekolah"></div>';
-      h += '<div class="jt-lebar"><label>Keterangan / benefit <span class="opsional">(opsional)</span></label><input type="text" data-f="keterangan" value="' + esc(j.keterangan || '') + '"></div>';
+      h += '<div class="jt-lebar"><label>Keterangan / benefit <span class="opsional">(opsional)</span></label><input type="text" data-f="keterangan" value="' + esc(j.keterangan || '') + '"><div class="hint">Coret: <code>~~Rp 200.000~~</code> atau <code>&lt;s&gt;Rp 200.000&lt;/s&gt;</code> · Tebal: <code>**teks**</code></div></div>';
       h += '<div><label>Harga normal</label><input type="number" data-f="harga_normal" value="' + (j.harga_normal || '') + '" min="0"></div>';
       h += '<div><label>Harga early bird</label><input type="number" data-f="harga_eb" value="' + (j.harga_eb || '') + '" min="0" placeholder="opsional"></div>';
       h += '<div><label>Orang per tiket</label><input type="number" data-f="orang" value="' + j.orang + '" min="1" max="10"' + (j.terpakai ? ' disabled title="Tidak bisa diubah, sudah ada pendaftar"' : '') + '></div>';

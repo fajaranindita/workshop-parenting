@@ -107,6 +107,17 @@
     document.body.removeChild(ta);
   }
 
+  /**
+   * Teks keterangan tiket dengan format sederhana yang aman:
+   * <s>teks</s> atau ~~teks~~ → dicoret, **teks** → tebal. Kode HTML lain tetap tampil sebagai teks.
+   */
+  function formatKet(s) {
+    return esc(s)
+      .replace(/&lt;s&gt;([\s\S]+?)&lt;\/s&gt;/gi, '<s>$1</s>')
+      .replace(/~~([^~]+?)~~/g, '<s>$1</s>')
+      .replace(/\*\*([^*]+?)\*\*/g, '<b>$1</b>');
+  }
+
   function badge(status) {
     return '<span class="badge st-' + esc(status) + '">' + esc(LABEL_STATUS[status] || status) + '</span>';
   }
@@ -210,10 +221,10 @@
   function badgeVip(p) { return p && p.vip ? ' <span class="badge vip">VIP</span>' : ''; }
 
   window.App = {
-    VERSI: '2026.11.26c', // naikkan bersama semua halaman setiap rilis
+    VERSI: '2026.11.26d', // naikkan bersama semua halaman setiap rilis
 
     api: api, rupiah: rupiah, keDate: keDate, fmtTanggal: fmtTanggal, fmtJam: fmtJam, fmtWaktu: fmtWaktu,
-    esc: esc, param: param, $: $, $$: $$, toast: toast, salin: salin, badge: badge, LABEL_STATUS: LABEL_STATUS,
+    esc: esc, formatKet: formatKet, param: param, $: $, $$: $$, toast: toast, salin: salin, badge: badge, LABEL_STATUS: LABEL_STATUS,
     halaman: halaman, linkWA: linkWA, simpan: simpan, ambil: ambil, hapus: hapus, siapkanFile: siapkanFile,
     hitungMundur: hitungMundur, memuat: memuat, csv: csv, unduh: unduh,
     labelAnggota: labelAnggota, LABEL_JK: LABEL_JK, daftarOrang: daftarOrang, ringkasJK: ringkasJK, teksAnggota: teksAnggota, badgeVip: badgeVip
