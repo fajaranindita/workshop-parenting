@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>E-Tiket</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
   <div class="wrap" style="max-width:460px">
@@ -16,16 +16,29 @@
 
   <script src="config.js"></script>
   <script src="app.js"></script>
-  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.26e'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
+  <script src="vendor/qrcode.min.js"></script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.26f'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
   <script>
   (function () {
     var A = App, isi = A.$('#isi'), t = A.param('t');
     if (!t) { isi.innerHTML = '<div class="banner warn">Link tiket tidak lengkap.</div>'; return; }
-    isi.innerHTML = A.memuat('Memuat e-tiket…');
+    // E-tiket disimpan di perangkat: langsung tampil, dan tetap bisa dibuka saat sinyal di lokasi lemah
+    var KUNCI = 'ws_tiket_' + t.slice(0, 24);
+    var simpanan = A.ambil(KUNCI);
+    if (simpanan) tampil(simpanan, 'Menampilkan e-tiket tersimpan · memperbarui…');
+    else isi.innerHTML = A.memuat('Memuat e-tiket…');
 
     A.api('tiket', { t: t }).then(function (r) {
-      A.setLabelVip(r.tiket.acara);
-      var k = r.tiket, a = k.acara;
+      A.simpan(KUNCI, r.tiket);
+      tampil(r.tiket, '');
+    }).catch(function (e) {
+      if (simpanan) { var c = A.$('#catatanCache'); if (c) c.textContent = 'Offline: menampilkan e-tiket yang tersimpan di perangkat ini.'; return; }
+      isi.innerHTML = '<div class="card"><div class="banner danger">' + A.esc(e.message) + '</div><a href="status.html">Cek status pendaftaran</a></div>';
+    });
+
+    function tampil(k, catatan) {
+      A.setLabelVip(k.acara);
+      var a = k.acara;
       document.title = 'E-Tiket ' + k.nama;
       var h = '<div class="tiket' + (k.vip ? ' tiket-vip' : '') + '">';
       h += '<div class="atas"><small>' + (k.vip ? '★ E-TIKET ' + A.esc(A.teksVip()) : 'E-TIKET') + '</small><h2>' + A.esc(a.nama_acara) + '</h2>';
@@ -36,19 +49,18 @@
       h += '<div class="qr" id="qr"></div>';
       h += '<div class="kode">' + A.esc(k.kode) + '</div>';
       h += '<div class="potong" style="margin-top:16px"></div><div class="isi"><dl class="dl">';
-      A.daftarOrang(k).forEach(function (o, i) {
+      A.daftarOrang(k).forEach(function (o) {
         h += '<dt>' + (k.orang === 1 ? 'Nama' : A.esc(o.peran)) + '</dt><dd>' + A.esc(o.nama || '-') + (o.jk ? ' <small class="muted">(' + o.jk + ')</small>' : '') + '</dd>';
       });
       if (k.asal) h += '<dt>Asal</dt><dd>' + A.esc(k.asal) + '</dd>';
       h += '<dt>Tiket</dt><dd>' + A.esc(k.jenis_nama) + ' (' + k.orang + ' orang)</dd>';
       if (k.jumlah_anak) h += '<dt>Penitipan anak</dt><dd>' + k.jumlah_anak + ' anak (usia ' + A.esc(String(k.usia_anak).split(',').join(', ')) + ' th)</dd>';
       h += '</dl><p class="hint" style="margin-top:14px">Tunjukkan QR code ini kepada panitia saat registrasi ulang. Simpan dengan screenshot atau cetak halaman ini.</p></div></div>';
-      h += '<div class="btn-grup no-print" style="margin-top:16px;justify-content:center"><button class="btn sekunder" onclick="window.print()">Cetak / Simpan PDF</button></div>';
+      h += '<p class="hint no-print" id="catatanCache" style="text-align:center;margin-top:10px">' + A.esc(catatan) + '</p>';
+      h += '<div class="btn-grup no-print" style="margin-top:6px;justify-content:center"><button class="btn sekunder" onclick="window.print()">Cetak / Simpan PDF</button></div>';
       isi.innerHTML = h;
       new QRCode(document.getElementById('qr'), { text: k.token, width: 460, height: 460, correctLevel: QRCode.CorrectLevel.M });
-    }).catch(function (e) {
-      isi.innerHTML = '<div class="card"><div class="banner danger">' + A.esc(e.message) + '</div><a href="status.html">Cek status pendaftaran</a></div>';
-    });
+    }
   })();
   </script>
 </body>

@@ -1,0 +1,6 @@
+Library pihak ketiga yang disimpan di folder ini (agar situs tidak bergantung pada CDN):
+
+- qrcode.min.js  — QRCode.js oleh Shim Sangmin (davidshimjs), lisensi MIT.
+  https://github.com/davidshimjs/qrcodejs
+- html5-qrcode.min.js — html5-qrcode v2.3.8 oleh Minhaz (mebjas), lisensi Apache-2.0.
+  https://github.com/mebjas/html5-qrcode

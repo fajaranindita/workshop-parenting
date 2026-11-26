@@ -1,5 +1,5 @@
 /* Dashboard panitia */
-window.ADMIN_VERSI = '2026.11.26e';
+window.ADMIN_VERSI = '2026.11.26f';
 (function () {
   'use strict';
   var A = App, $ = A.$, $$ = A.$$, esc = A.esc;
@@ -23,7 +23,12 @@ window.ADMIN_VERSI = '2026.11.26e';
   function mulai() {
     S.sesi = A.ambil('ws_sesi');
     if (!S.sesi) return tampilLogin();
-    apiA('me').then(masuk).catch(function () { tampilLogin(); });
+    // Data sesi & daftar peserta diminta bersamaan, bukan berurutan
+    var pPeserta = apiA('peserta').catch(function () { return null; });
+    apiA('me').then(function (me) {
+      masuk(me, true);
+      return pPeserta.then(function (r) { if (r) terimaPeserta(r); else muatPeserta(); });
+    }).catch(function () { tampilLogin(); });
   }
 
   function tampilLogin() {
@@ -31,7 +36,7 @@ window.ADMIN_VERSI = '2026.11.26e';
     $('#vLogin').hidden = false;
   }
 
-  function masuk(me) {
+  function masuk(me, tanpaMuat) {
     S.admin = me.admin; S.bank = me.bank; S.acara = me.acara; A.setLabelVip(me.acara); S.batasJam = me.batas_bayar_jam; S.asal = me.asal || [];
     $('#vLogin').hidden = true;
     $('#vUtama').hidden = false;
@@ -40,7 +45,8 @@ window.ADMIN_VERSI = '2026.11.26e';
     $('#tabPengaturan').hidden = S.admin.peran !== 'koordinator';
     $('#tabLanding').hidden = S.admin.peran !== 'koordinator';
     $('#mBank').textContent = S.bank;
-    muatPeserta();
+    if (!tanpaMuat) muatPeserta();
+    else $('#tbPeserta').innerHTML = '<tr><td colspan="7">' + A.memuat() + '</td></tr>';
   }
 
   function keluar(diam) {
@@ -58,7 +64,7 @@ window.ADMIN_VERSI = '2026.11.26e';
       .then(function (r) {
         S.sesi = r.sesi; A.simpan('ws_sesi', r.sesi);
         $('#lPass').value = '';
-        return apiA('me').then(masuk);
+        masuk(r); // data dashboard sudah ikut dikirim saat login
       })
       .catch(function (e) { err.textContent = e.message; err.hidden = false; })
       .then(function () { btn.disabled = false; });
@@ -86,11 +92,13 @@ window.ADMIN_VERSI = '2026.11.26e';
   // ---------------- Peserta ----------------
   function muatPeserta(diam) {
     if (!diam) $('#tbPeserta').innerHTML = '<tr><td colspan="7">' + A.memuat() + '</td></tr>';
-    return apiA('peserta').then(function (r) {
-      S.peserta = r.peserta;
-      $('#infoMuat').textContent = 'Diperbarui ' + A.fmtJam(new Date()) + ' · ' + S.peserta.length + ' pendaftaran';
-      renderPeserta();
-    }).catch(function (e) { if (!diam) A.toast(e.message, true); });
+    return apiA('peserta').then(terimaPeserta).catch(function (e) { if (!diam) A.toast(e.message, true); });
+  }
+
+  function terimaPeserta(r) {
+    S.peserta = r.peserta;
+    $('#infoMuat').textContent = 'Diperbarui ' + A.fmtJam(new Date()) + ' · ' + S.peserta.length + ' pendaftaran';
+    renderPeserta();
   }
 
   function hitung() {

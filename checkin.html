@@ -6,9 +6,9 @@
   <meta name="robots" content="noindex">
   <title>Check-in Peserta</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
   <div id="vLogin" class="wrap" style="max-width:420px;padding-top:60px" hidden>
@@ -42,7 +42,8 @@
 
   <script src="config.js"></script>
   <script src="app.js"></script>
-  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.26e'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
+  <script src="vendor/html5-qrcode.min.js"></script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.26f'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
   <script>
   (function () {
     var A = App, $ = A.$, esc = A.esc;
@@ -56,8 +57,9 @@
     }
 
     if (!sesi) { $('#vLogin').hidden = false; return; }
+    muat(); // dimuat bersamaan dengan pengecekan sesi, tidak berurutan
     apiA('me').then(function (me) {
-      A.setLabelVip(me.acara); $('#vUtama').hidden = false; muat(); setInterval(muat, 60000); })
+      A.setLabelVip(me.acara); $('#vUtama').hidden = false; setInterval(muat, 60000); })
       .catch(function () { $('#vLogin').hidden = false; });
 
     function muat() {
