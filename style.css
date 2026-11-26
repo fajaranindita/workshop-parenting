@@ -461,3 +461,22 @@ code { background: var(--primary-soft); padding: 1px 5px; border-radius: 4px; fo
 /* Ukuran harga menyesuaikan lebar kartu (4 kartu sebaris tetap muat) */
 .lp-harga { container-type: inline-size; padding: 30px 24px; }
 .lp-harga-angka { font-size: 34px; font-size: clamp(28px, 16.5cqi, 44px); white-space: nowrap; }
+.lp-harga-redup { opacity: .62; filter: grayscale(.55); }
+.opsi.habis .kiri small:last-child { color: var(--accent); font-weight: 600; }
+
+/* ---------- Editor jenis tiket ---------- */
+.jt-daftar { display: grid; gap: 12px; }
+.jt-kartu { border: 1px solid var(--line); border-left: 5px solid var(--ok); border-radius: 12px; padding: 14px 16px; background: #fff; }
+.jt-kartu.jt-abu { border-left-color: #9aa39e; background: #f7f6f2; }
+.jt-kartu.jt-sembunyi { border-left-color: var(--line); background: #f3f1ec; opacity: .85; }
+.jt-kepala { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.jt-kepala b:first-child { font-size: 1.02rem; }
+.jt-terjual { margin-left: auto; font-size: .88rem; color: var(--muted); }
+.jt-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 14px; }
+.jt-grid .jt-lebar { grid-column: span 2; }
+.jt-grid .jt-jadwal { grid-column: span 3; }
+.jt-cek { display: flex; align-items: flex-end; padding-bottom: 8px; }
+.jt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.jt-chips .chip { cursor: default; }
+.jt-hapus-tgl { background: none; border: 0; color: inherit; font-weight: 800; cursor: pointer; padding: 0 0 0 4px; }
+@media (max-width: 800px) { .jt-grid { grid-template-columns: 1fr 1fr; } .jt-grid .jt-lebar, .jt-grid .jt-jadwal { grid-column: span 2; } }

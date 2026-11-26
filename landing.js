@@ -1,5 +1,5 @@
 /* Landing page — dirender dari data `publik` (isi teks diatur di dashboard, tab Landing Page) */
-window.LANDING_VERSI = '2026.11.26';
+window.LANDING_VERSI = '2026.11.26b';
 (function () {
   'use strict';
   var A = window.App;
@@ -157,7 +157,7 @@ window.LANDING_VERSI = '2026.11.26';
     tiket.forEach(function (k) {
       var sorot = L.harga.sorot && L.harga.sorot === k.id;
       var hemat = k.harga_normal - k.harga;
-      var kelas = 'lp-harga' + (sorot ? ' lp-harga-sorot' : '') + (k.vip && !sorot ? ' lp-harga-vip' : '');
+      var kelas = 'lp-harga' + (sorot ? ' lp-harga-sorot' : '') + (k.vip && !sorot ? ' lp-harga-vip' : '') + (k.bisa_dibeli === false && k.kode_alasan !== 'belum_buka' ? ' lp-harga-redup' : '');
       h += '<div class="' + kelas + '">';
       h += '<div class="lp-harga-atas"><span class="lp-harga-nama">' + esc(k.nama) + '</span>';
       if (hemat > 0) h += '<span class="lp-pil-emas">Hemat ' + A.rupiah(hemat) + '</span>';
@@ -169,7 +169,7 @@ window.LANDING_VERSI = '2026.11.26';
       var info2 = [];
       if (k.orang > 1) info2.push('Untuk ' + k.orang + ' orang' + (k.orang > 2 ? ' · ' + A.rupiah(Math.round(k.harga / k.orang)) + '/orang' : ''));
       if (hemat > 0 && akhirEB) info2.push('Harga early bird s.d. ' + akhirEB);
-      if (info.status === 'buka' && k.sisa > 0 && k.sisa <= 20) info2.push('Sisa ' + k.sisa + ' tiket');
+      if (k.bisa_dibeli && k.sisa <= 20) info2.push('Sisa ' + k.sisa + ' tiket');
       if (info2.length) h += '<p class="lp-harga-kecil">' + info2.map(esc).join('<br>') + '</p>';
       h += tombolHarga(info, k);
       h += '</div>';
@@ -178,6 +178,10 @@ window.LANDING_VERSI = '2026.11.26';
   }
 
   function tombolHarga(info, k) {
+    if (k.bisa_dibeli !== undefined) {
+      if (k.bisa_dibeli) return '<a class="lp-btn lp-btn-pesan" href="#daftar-' + encodeURIComponent(k.id) + '">Pesan Sekarang</a>';
+      if (k.alasan && k.kode_alasan !== 'belum_buka') return '<span class="lp-btn lp-btn-mati">' + esc(k.alasan) + '</span>';
+    }
     if (info.status === 'buka' && k.sisa > 0) return '<a class="lp-btn lp-btn-pesan" href="#daftar-' + encodeURIComponent(k.id) + '">Pesan Sekarang</a>';
     var teks = info.status === 'belum_buka' ? 'Dibuka ' + A.fmtTanggal(info.buka, { weekday: undefined }) + ', ' + A.fmtJam(info.buka)
       : info.status === 'tutup' ? 'Pendaftaran ditutup'

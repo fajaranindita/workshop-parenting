@@ -1,5 +1,5 @@
 /* Dashboard panitia */
-window.ADMIN_VERSI = '2026.11.26';
+window.ADMIN_VERSI = '2026.11.26b';
 (function () {
   'use strict';
   var A = App, $ = A.$, $$ = A.$$, esc = A.esc;
@@ -561,8 +561,8 @@ window.ADMIN_VERSI = '2026.11.26';
       '<div class="hint">Muncul di bawah kolom nama. Bisa ditambah aturan gelar atau tenggat koreksi nama, misalnya "Tanpa gelar. Koreksi nama paling lambat H-3".</div></div>';
     h += '<div class="card"><h2>B. Jenis tiket & harga</h2>';
     h += '<div class="grid2"><div>' + f('kapasitas_total', 'Kapasitas total (orang)', 'number', 'min="1"', 'Sudah terdaftar: <b>' + t.orang + ' orang</b>') + '</div><div id="cekKapasitas" style="padding-top:38px"></div></div>';
-    h += '<div class="tabel-wrap" style="margin-top:14px"><table><thead><tr><th>Nama tiket &amp; keterangan</th><th>Harga normal</th><th>Harga early bird</th><th>Orang/tiket</th><th>Kuota (tiket)</th><th class="angka">Kursi</th><th>Terjual*</th><th>VIP</th><th>Aktif</th><th></th></tr></thead><tbody id="tbJenis"></tbody></table></div>';
-    h += '<p class="hint">Harga berlaku per tiket. Kursi = kuota × orang per tiket (contoh: tiket Grup 5 orang dengan kuota 20 = 100 kursi). Centang <b>VIP</b> agar tiket ditandai khusus di formulir, e-tiket, dashboard, dan saat check-in.<br>*Termasuk yang masih menunggu pembayaran. Jenis tiket yang sudah ada pendaftarnya tidak bisa dihapus, cukup dinonaktifkan.</p>';
+    h += '<p class="hint" style="margin-top:12px">Harga berlaku per tiket. Kursi = kuota × orang per tiket (contoh: Grup 5 orang dengan kuota 20 = 100 kursi). <b>Tampilan</b>: <b>Aktif</b> = bisa dibeli; <b>Abu-abu</b> = terlihat tetapi tidak bisa dipilih; <b>Sembunyi</b> = tidak muncul sama sekali. <b>Dijual</b>: pilih <i>Hanya tanggal tertentu</i> untuk tiket acara offline/pre-sale; pada tanggal itu tiket bisa dibeli walaupun pendaftaran umum belum dibuka. Terjual termasuk yang masih menunggu pembayaran; tiket yang sudah ada pendaftarnya tidak bisa dihapus.</p>';
+    h += '<div id="tbJenis" class="jt-daftar"></div>';
     h += '<button class="btn sekunder kecil" id="tambahJenis">+ Tambah jenis tiket</button></div>';
 
     h += '<div class="card"><h2>C. Penitipan anak</h2>';
@@ -603,7 +603,7 @@ window.ADMIN_VERSI = '2026.11.26';
     });
     $('#c_kapasitas_total').addEventListener('input', cekKapasitas);
     $('#tambahJenis').addEventListener('click', function () {
-      S.jenisEdit.push({ id: '', nama: '', harga_normal: 0, harga_eb: 0, orang: 1, kuota: 0, aktif: true, vip: false, keterangan: '', terpakai: 0 });
+      S.jenisEdit.push({ id: '', nama: '', harga_normal: 0, harga_eb: 0, orang: 1, kuota: 0, tampilan: 'aktif', vip: false, keterangan: '', tanggal_jual: [], luar_jadwal: 'sembunyi', catatan_abu: '', terpakai: 0 });
       renderJenis();
     });
     $('#simpanPengaturan').addEventListener('click', simpanPengaturan);
@@ -611,30 +611,78 @@ window.ADMIN_VERSI = '2026.11.26';
   }
 
   function renderJenis() {
+    var opsi = function (nilai, daftar) {
+      return daftar.map(function (o) { return '<option value="' + o[0] + '"' + (nilai === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+    };
     $('#tbJenis').innerHTML = S.jenisEdit.map(function (j, i) {
-      return '<tr data-i="' + i + '"><td style="min-width:220px"><input type="text" data-f="nama" value="' + esc(j.nama) + '" placeholder="Nama tiket">' +
-        '<input type="text" data-f="keterangan" value="' + esc(j.keterangan || '') + '" placeholder="Keterangan/benefit (opsional)" style="margin-top:6px;font-size:.85rem"></td>' +
-        '<td><input type="number" data-f="harga_normal" value="' + (j.harga_normal || '') + '" min="0" style="width:120px"></td>' +
-        '<td><input type="number" data-f="harga_eb" value="' + (j.harga_eb || '') + '" min="0" style="width:120px" placeholder="opsional"></td>' +
-        '<td><input type="number" data-f="orang" value="' + j.orang + '" min="1" max="10" style="width:70px"' + (j.terpakai ? ' disabled title="Tidak bisa diubah, sudah ada pendaftar"' : '') + '></td>' +
-        '<td><input type="number" data-f="kuota" value="' + (j.kuota || '') + '" min="' + j.terpakai + '" style="width:90px"></td>' +
-        '<td class="angka kursi">' + ((j.kuota || 0) * (j.orang || 1)) + '</td>' +
-        '<td class="angka">' + j.terpakai + '</td>' +
-        '<td><input type="checkbox" data-f="vip"' + (j.vip ? ' checked' : '') + '></td>' +
-        '<td><input type="checkbox" data-f="aktif"' + (j.aktif ? ' checked' : '') + '></td>' +
-        '<td>' + (j.terpakai ? '' : '<button class="btn sekunder kecil" data-hapus="' + i + '" type="button">Hapus</button>') + '</td></tr>';
+      var berjadwal = (j.tanggal_jual || []).length > 0 || j._berjadwal;
+      var h = '<div class="jt-kartu jt-' + (j.tampilan || 'aktif') + '" data-i="' + i + '">';
+      h += '<div class="jt-kepala"><b>' + (esc(j.nama) || 'Tiket baru') + '</b>' + (j.vip ? ' <span class="badge vip">VIP</span>' : '') +
+        '<span class="jt-terjual">Terjual: <b>' + j.terpakai + '</b></span>' +
+        (j.terpakai ? '' : '<button class="btn sekunder kecil" data-hapus="' + i + '" type="button">Hapus</button>') + '</div>';
+      h += '<div class="jt-grid">';
+      h += '<div class="jt-lebar"><label>Nama tiket</label><input type="text" data-f="nama" value="' + esc(j.nama) + '" placeholder="Misalnya: Pre-sale Bazar Sekolah"></div>';
+      h += '<div class="jt-lebar"><label>Keterangan / benefit <span class="opsional">(opsional)</span></label><input type="text" data-f="keterangan" value="' + esc(j.keterangan || '') + '"></div>';
+      h += '<div><label>Harga normal</label><input type="number" data-f="harga_normal" value="' + (j.harga_normal || '') + '" min="0"></div>';
+      h += '<div><label>Harga early bird</label><input type="number" data-f="harga_eb" value="' + (j.harga_eb || '') + '" min="0" placeholder="opsional"></div>';
+      h += '<div><label>Orang per tiket</label><input type="number" data-f="orang" value="' + j.orang + '" min="1" max="10"' + (j.terpakai ? ' disabled title="Tidak bisa diubah, sudah ada pendaftar"' : '') + '></div>';
+      h += '<div><label>Kuota (tiket)</label><input type="number" data-f="kuota" value="' + (j.kuota || '') + '" min="' + j.terpakai + '"><div class="hint">= <b class="kursi">' + ((j.kuota || 0) * (j.orang || 1)) + '</b> kursi</div></div>';
+      h += '<div><label>Tampilan</label><select data-f="tampilan">' + opsi(j.tampilan || 'aktif', [['aktif', 'Aktif (bisa dibeli)'], ['abu', 'Abu-abu (terlihat, tidak bisa dipilih)'], ['sembunyi', 'Sembunyi (tidak tampil)']]) + '</select></div>';
+      h += '<div><label>Dijual</label><select data-f="mode_jadwal">' + opsi(berjadwal ? 'tanggal' : 'periode', [['periode', 'Selama periode pendaftaran'], ['tanggal', 'Hanya tanggal tertentu']]) + '</select></div>';
+      if (berjadwal) {
+        h += '<div class="jt-lebar jt-jadwal"><label>Tanggal jual <span class="opsional">(bisa lebih dari satu hari)</span></label><div class="jt-chips">' +
+          (j.tanggal_jual || []).map(function (d, k) {
+            return '<span class="chip aktif">' + esc(A.fmtTanggal(d, { weekday: 'short', month: 'short' })) + ' <button type="button" class="jt-hapus-tgl" data-k="' + k + '" aria-label="Hapus tanggal">×</button></span>';
+          }).join('') + '</div>' +
+          '<div class="baris-isi" style="margin-top:8px;max-width:360px"><input type="date" class="jt-tgl-baru"><button type="button" class="btn sekunder kecil jt-tambah-tgl">+ Tambah tanggal</button></div>' +
+          ((j.tanggal_jual || []).length ? '' : '<div class="hint" style="color:var(--danger)">Belum ada tanggal: tiket ini tidak akan bisa dibeli.</div>') + '</div>';
+        h += '<div><label>Di luar tanggal jual</label><select data-f="luar_jadwal">' + opsi(j.luar_jadwal || 'sembunyi', [['sembunyi', 'Sembunyikan'], ['abu', 'Tampil abu-abu']]) + '</select></div>';
+      }
+      if (j.tampilan === 'abu' || (berjadwal && j.luar_jadwal === 'abu')) {
+        h += '<div class="jt-lebar"><label>Teks saat abu-abu <span class="opsional">(opsional)</span></label><input type="text" data-f="catatan_abu" maxlength="120" value="' + esc(j.catatan_abu || '') + '" placeholder="' +
+          (berjadwal ? 'Otomatis: Hanya dijual pada (tanggal)' : 'Otomatis: Belum tersedia') + '"></div>';
+      }
+      h += '<div class="jt-cek"><label class="cek"><input type="checkbox" data-f="vip"' + (j.vip ? ' checked' : '') + '> <span>Tiket VIP</span></label></div>';
+      return h + '</div></div>';
     }).join('');
+
     $$('#tbJenis [data-f]').forEach(function (el) {
-      el.addEventListener('input', function () {
-        var i = +el.closest('tr').getAttribute('data-i'), fld = el.getAttribute('data-f');
+      var perlu = ['tampilan', 'mode_jadwal', 'luar_jadwal', 'vip'].indexOf(el.getAttribute('data-f')) >= 0; // ubah susunan kartu
+      el.addEventListener(el.tagName === 'SELECT' || el.type === 'checkbox' ? 'change' : 'input', function () {
+        var i = +el.closest('[data-i]').getAttribute('data-i'), fld = el.getAttribute('data-f');
         var v = el.type === 'checkbox' ? el.checked : el.value;
-        if (fld === 'harga_normal' || fld === 'harga_eb' || fld === 'kuota' || fld === 'orang') v = Number(v) || 0;
-        S.jenisEdit[i][fld] = v;
         var jj = S.jenisEdit[i];
-        el.closest('tr').querySelector('.kursi').textContent = (jj.kuota || 0) * (jj.orang || 1);
+        if (fld === 'mode_jadwal') {
+          jj._berjadwal = v === 'tanggal';
+          if (!jj._berjadwal) jj.tanggal_jual = [];
+        } else {
+          if (fld === 'harga_normal' || fld === 'harga_eb' || fld === 'kuota' || fld === 'orang') v = Number(v) || 0;
+          jj[fld] = v;
+        }
+        if (perlu) { renderJenis(); return; }
+        el.closest('[data-i]').querySelector('.kursi').textContent = (jj.kuota || 0) * (jj.orang || 1);
         cekKapasitas();
       });
-      if (el.type === 'checkbox' || el.tagName === 'SELECT') el.addEventListener('change', function () { el.dispatchEvent(new Event('input')); });
+    });
+    $$('#tbJenis .jt-tambah-tgl').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var kartu = b.closest('[data-i]'), jj = S.jenisEdit[+kartu.getAttribute('data-i')];
+        var v = kartu.querySelector('.jt-tgl-baru').value;
+        if (!v) return A.toast('Pilih tanggal dulu.', true);
+        var acara = String($('#c_tanggal_acara').value || '').slice(0, 10);
+        if (acara && v > acara) return A.toast('Tanggal jual tidak boleh setelah tanggal acara.', true);
+        jj.tanggal_jual = (jj.tanggal_jual || []).filter(function (x) { return x !== v; }).concat([v]).sort();
+        jj._berjadwal = true;
+        renderJenis();
+      });
+    });
+    $$('#tbJenis .jt-hapus-tgl').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var jj = S.jenisEdit[+b.closest('[data-i]').getAttribute('data-i')];
+        jj.tanggal_jual.splice(+b.getAttribute('data-k'), 1);
+        jj._berjadwal = true;
+        renderJenis();
+      });
     });
     $$('#tbJenis [data-hapus]').forEach(function (b) {
       b.addEventListener('click', function () { S.jenisEdit.splice(+b.getAttribute('data-hapus'), 1); renderJenis(); });
@@ -644,10 +692,10 @@ window.ADMIN_VERSI = '2026.11.26';
 
   function cekKapasitas() {
     var kap = Number($('#c_kapasitas_total').value) || 0;
-    var kursi = S.jenisEdit.filter(function (j) { return j.aktif; }).reduce(function (s, j) { return s + (j.kuota || 0) * (j.orang || 1); }, 0);
+    var kursi = S.jenisEdit.filter(function (j) { return j.tampilan !== 'sembunyi'; }).reduce(function (s, j) { return s + (j.kuota || 0) * (j.orang || 1); }, 0);
     $('#cekKapasitas').innerHTML = kursi > kap
-      ? '<div class="banner warn" style="margin:0">Total kursi dari kuota tiket aktif: <b>' + kursi + ' orang</b>, melebihi kapasitas ' + kap + '. Penjualan akan berhenti otomatis saat kapasitas penuh.</div>'
-      : '<div class="banner ok" style="margin:0">Total kursi dari kuota tiket aktif: <b>' + kursi + ' orang</b> (kapasitas ' + kap + ').</div>';
+      ? '<div class="banner warn" style="margin:0">Total kursi dari kuota tiket yang tampil: <b>' + kursi + ' orang</b>, melebihi kapasitas ' + kap + '. Penjualan akan berhenti otomatis saat kapasitas penuh.</div>'
+      : '<div class="banner ok" style="margin:0">Total kursi dari kuota tiket yang tampil: <b>' + kursi + ' orang</b> (kapasitas ' + kap + ').</div>';
   }
 
   function kumpulkanPengaturan() {
@@ -655,10 +703,13 @@ window.ADMIN_VERSI = '2026.11.26';
     $$('#pIsi [data-k]').forEach(function (el) { c[el.getAttribute('data-k')] = el.value; });
     c.penitipan_aktif = $('#c_penitipan_aktif').checked ? 'ya' : 'tidak';
     c.pertanyaan_aktif = $('#c_pertanyaan_aktif').checked ? 'ya' : 'tidak';
-    return { config: c, jenis_tiket: S.jenisEdit.map(function (j) { return { id: j.id, nama: j.nama, harga_normal: j.harga_normal, harga_eb: j.harga_eb, orang: j.orang, kuota: j.kuota, aktif: !!j.aktif, vip: !!j.vip, keterangan: j.keterangan || '' }; }) };
+    return { config: c, jenis_tiket: S.jenisEdit.map(function (j) { return { id: j.id, nama: j.nama, harga_normal: j.harga_normal, harga_eb: j.harga_eb, orang: j.orang, kuota: j.kuota, vip: !!j.vip, keterangan: j.keterangan || '',
+      tampilan: j.tampilan || 'aktif', tanggal_jual: j.tanggal_jual || [], luar_jadwal: j.luar_jadwal || 'sembunyi', catatan_abu: j.catatan_abu || '' }; }) };
   }
 
   function simpanPengaturan() {
+    var tanpaTgl = S.jenisEdit.filter(function (j) { return j._berjadwal && !(j.tanggal_jual || []).length; })[0];
+    if (tanpaTgl) return A.toast('Tiket "' + (tanpaTgl.nama || 'baru') + '" dijual pada tanggal tertentu, tapi belum ada tanggalnya. Tambahkan tanggal atau pilih "Selama periode pendaftaran".', true);
     var d = kumpulkanPengaturan();
     var lama = S.pengaturan.config;
     if (d.config.bank !== lama.bank && S.pengaturan.terpakai.pending > 0) {
@@ -689,9 +740,19 @@ window.ADMIN_VERSI = '2026.11.26';
       asal: String(c.asal_daftar || '').split(/[\n|]/).map(function (x) { return x.trim(); }).filter(function (x) { return x && x.toLowerCase() !== 'lainnya'; }),
       catatan_nama: c.catatan_nama,
       pertanyaan_aktif: c.pertanyaan_aktif === 'ya',
-      tiket: S.jenisEdit.filter(function (j) { return j.aktif; }).map(function (j) {
-        return { id: j.id || ('baru' + Math.random()), nama: j.nama, orang: j.orang, vip: !!j.vip, keterangan: j.keterangan || '', harga: (eb && j.harga_eb) ? j.harga_eb : j.harga_normal, harga_normal: j.harga_normal, sisa: Math.max(0, j.kuota - j.terpakai) };
-      }),
+      tiket: S.jenisEdit.map(function (j) {
+        // Meniru aturan tampil/jual di server untuk hari ini (WIB)
+        var hariIni = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+        var tgl = j.tanggal_jual || [], sisa = Math.max(0, j.kuota - j.terpakai);
+        var tampil = j.tampilan !== 'sembunyi', bisa = j.tampilan === 'aktif' && sisa > 0, alasan = sisa > 0 ? '' : 'Habis', kode = sisa > 0 ? 'jual' : 'habis';
+        if (j.tampilan === 'abu') { alasan = j.catatan_abu || 'Belum tersedia'; kode = 'abu'; }
+        else if (tgl.length && tgl.indexOf(hariIni) < 0) {
+          bisa = false; tampil = tampil && j.luar_jadwal === 'abu'; kode = 'jadwal';
+          var berikut = tgl.filter(function (x) { return x >= hariIni; });
+          alasan = j.catatan_abu || (berikut.length ? 'Hanya dijual pada ' + berikut.map(function (x) { return A.fmtTanggal(x, { weekday: undefined, month: 'short' }); }).join(', ') : 'Masa penjualan sudah berakhir');
+        }
+        return { _tampil: tampil, id: j.id || ('baru' + Math.random()), nama: j.nama, orang: j.orang, vip: !!j.vip, keterangan: j.keterangan || '', harga: (eb && j.harga_eb) ? j.harga_eb : j.harga_normal, harga_normal: j.harga_normal, sisa: sisa, bisa_dibeli: bisa, alasan: alasan, kode_alasan: kode, berjadwal: tgl.length > 0 };
+      }).filter(function (k) { return k._tampil; }),
       penitipan: {
         aktif: c.penitipan_aktif === 'ya', sisa: Math.max(0, Number(c.penitipan_kapasitas) - t.anak),
         usia_min: Number(c.penitipan_usia_min), usia_maks: Number(c.penitipan_usia_maks),

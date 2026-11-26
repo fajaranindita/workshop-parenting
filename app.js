@@ -210,7 +210,7 @@
   function badgeVip(p) { return p && p.vip ? ' <span class="badge vip">VIP</span>' : ''; }
 
   window.App = {
-    VERSI: '2026.11.26', // naikkan bersama semua halaman setiap rilis
+    VERSI: '2026.11.26b', // naikkan bersama semua halaman setiap rilis
 
     api: api, rupiah: rupiah, keDate: keDate, fmtTanggal: fmtTanggal, fmtJam: fmtJam, fmtWaktu: fmtWaktu,
     esc: esc, param: param, $: $, $$: $$, toast: toast, salin: salin, badge: badge, LABEL_STATUS: LABEL_STATUS,

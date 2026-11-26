@@ -20,7 +20,7 @@
   <script src="config.js"></script>
   <script src="app.js"></script>
   <script src="landing.js"></script>
-  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.26'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}if(window.LANDING_VERSI!=='2026.11.26'){tampil('Halaman belum bisa dipakai: landing.js tidak ditemukan atau berbeda versi. Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}})();</script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.26b'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}if(window.LANDING_VERSI!=='2026.11.26b'){tampil('Halaman belum bisa dipakai: landing.js tidak ditemukan atau berbeda versi. Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}})();</script>
   <script>
   (function () {
     var A = App, isi = A.$('#isi');
@@ -82,21 +82,14 @@
       if (a.lokasi) h += '<div>📍 <span>' + A.esc(a.lokasi) + (a.link_maps ? ' · <a href="' + A.esc(a.link_maps) + '" target="_blank" rel="noopener">Lihat peta</a>' : '') + '</span></div>';
       h += '</div></div>';
 
-      if (info.status === 'belum_buka') {
-        h += '<div class="card"><div class="banner info">Pendaftaran dibuka pada <b>' + A.fmtTanggal(info.buka) + ', ' + A.fmtJam(info.buka) + '</b>.</div>' + daftarHarga() + '</div>';
-        isi.innerHTML = h; return;
-      }
-      if (info.status === 'tutup') {
-        h += '<div class="card"><div class="banner warn">Pendaftaran sudah ditutup. Terima kasih atas antusiasmenya!</div></div>';
-        isi.innerHTML = h; return;
-      }
-      if (info.status === 'belum_diatur') {
-        h += '<div class="card"><div class="banner info">Pendaftaran belum dibuka. Pantau terus info dari panitia.</div></div>';
-        isi.innerHTML = h; return;
-      }
-      var semuaHabis = info.tiket.every(function (t) { return t.sisa < 1; });
-      if (semuaHabis) {
-        h += '<div class="card"><div class="banner warn">Maaf, semua tiket sudah habis.</div></div>';
+      // Tiket yang bisa dibeli saat ini (tiket berjadwal/pre-sale bisa dijual walau pendaftaran umum belum dibuka)
+      var bisa = function (t) { return t.bisa_dibeli !== undefined ? t.bisa_dibeli : (info.status === 'buka' && t.sisa > 0); };
+      var adaJual = info.tiket.some(bisa);
+      if (!adaJual) {
+        if (info.status === 'belum_buka') h += '<div class="card"><div class="banner info">Pendaftaran dibuka pada <b>' + A.fmtTanggal(info.buka) + ', ' + A.fmtJam(info.buka) + '</b>.</div>' + daftarHarga() + '</div>';
+        else if (info.status === 'tutup') h += '<div class="card"><div class="banner warn">Pendaftaran sudah ditutup. Terima kasih atas antusiasmenya!</div></div>';
+        else if (info.status === 'belum_diatur') h += '<div class="card"><div class="banner info">Pendaftaran belum dibuka. Pantau terus info dari panitia.</div></div>';
+        else h += '<div class="card"><div class="banner warn">Maaf, saat ini belum ada tiket yang bisa dipesan.</div>' + daftarHarga() + '</div>';
         isi.innerHTML = h; return;
       }
 
@@ -105,12 +98,13 @@
       if (info.early_bird) h += '<div class="banner ok">🎉 Harga early bird berlaku sampai ' + A.fmtTanggal(info.early_bird_akhir) + '.</div>';
 
       h += '<label>Pilih tiket</label><div class="pilihan">';
+      if (info.status !== 'buka') h += '<div class="banner info">Hari ini tersedia tiket khusus: <b>' + info.tiket.filter(bisa).map(function (t) { return A.esc(t.nama); }).join(', ') + '</b>.</div>';
       info.tiket.forEach(function (t, i) {
-        var habis = t.sisa < 1;
+        var habis = !bisa(t);
         h += '<label class="opsi' + (habis ? ' habis' : '') + '"><span class="kiri"><input type="radio" name="jenis" value="' + A.esc(t.id) + '"' + (habis ? ' disabled' : '') + '>';
         h += '<span><span class="nama">' + A.esc(t.nama) + '</span>' + A.badgeVip(t);
         if (t.keterangan) h += '<br><small class="ket">' + A.esc(t.keterangan) + '</small>';
-        h += '<br><small>' + (t.orang > 1 ? 'Untuk ' + t.orang + ' orang · ' : '') + (habis ? 'Habis' : (t.sisa <= 20 ? 'Sisa ' + t.sisa + ' tiket' : 'Tersedia')) + '</small></span></span>';
+        h += '<br><small>' + (t.orang > 1 ? 'Untuk ' + t.orang + ' orang · ' : '') + (habis ? A.esc(t.alasan || 'Habis') : (t.sisa <= 20 ? 'Sisa ' + t.sisa + ' tiket' : 'Tersedia')) + '</small></span></span>';
         h += '<span class="harga">' + (t.harga < t.harga_normal ? '<span class="coret">' + A.rupiah(t.harga_normal) + '</span>' : '') + A.rupiah(t.harga) +
           (t.orang > 2 ? '<small class="per-orang">' + A.rupiah(Math.round(t.harga / t.orang)) + '/orang</small>' : '') + '</span></label>';
       });
@@ -155,7 +149,7 @@
 
     function daftarHarga() {
       return '<h3>Harga tiket</h3>' + info.tiket.map(function (t) {
-        return '<div class="baris"><span>' + A.esc(t.nama) + '</span><b>' + A.rupiah(t.harga) + '</b></div>';
+        return '<div class="baris"><span>' + A.esc(t.nama) + (t.alasan && t.kode_alasan !== 'belum_buka' ? '<br><small class="muted">' + A.esc(t.alasan) + '</small>' : '') + '</span><b>' + A.rupiah(t.harga) + '</b></div>';
       }).join('');
     }
 
