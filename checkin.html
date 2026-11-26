@@ -42,7 +42,7 @@
 
   <script src="config.js"></script>
   <script src="app.js"></script>
-  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.26d'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.26e'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
   <script>
   (function () {
     var A = App, $ = A.$, esc = A.esc;
@@ -56,7 +56,8 @@
     }
 
     if (!sesi) { $('#vLogin').hidden = false; return; }
-    apiA('me').then(function () { $('#vUtama').hidden = false; muat(); setInterval(muat, 60000); })
+    apiA('me').then(function (me) {
+      A.setLabelVip(me.acara); $('#vUtama').hidden = false; muat(); setInterval(muat, 60000); })
       .catch(function () { $('#vLogin').hidden = false; });
 
     function muat() {
@@ -86,7 +87,7 @@
 
     function tampilHasil(r) {
       var p = r.peserta, h;
-      var detail = p ? (p.vip ? '<div class="vip-besar">★ VIP ★</div>' : '') + '<div style="font-size:1.15rem;font-weight:700;margin-top:6px">' + esc(p.nama) + '</div>' +
+      var detail = p ? (p.vip ? '<div class="vip-besar">★ ' + esc(A.teksVip()) + ' ★</div>' : '') + '<div style="font-size:1.15rem;font-weight:700;margin-top:6px">' + esc(p.nama) + '</div>' +
         (p.anggota && p.anggota.length ? '<div>' + A.labelAnggota(p.orang) + ': ' + esc(A.teksAnggota(p)) + '</div>' : '') +
         (p.jenis_kelamin && p.jenis_kelamin.length ? '<div class="jk-besar">' + esc(A.ringkasJK(p)) + '</div>' : '') +
         '<div>' + esc(p.kode) + ' · ' + esc(p.jenis_nama) + ' · <b>' + p.orang + ' orang</b>' + (p.jumlah_anak ? ' · <b>' + p.jumlah_anak + ' anak dititipkan</b> (usia ' + esc(p.usia_anak) + ')' : '') + '</div>' : '';
@@ -147,7 +148,7 @@
 
     $('#btnUnduh').addEventListener('click', function () {
       var rows = [['kode', 'nama', 'anggota_lain', 'jenis_kelamin', 'asal', 'vip', 'wa', 'jenis', 'orang', 'jumlah_anak', 'usia_anak', 'status']].concat(
-        peserta.map(function (p) { return [p.kode, p.nama, A.teksAnggota(p), A.ringkasJK(p), p.asal, p.vip ? 'VIP' : '', p.wa, p.jenis_nama, p.orang, p.jumlah_anak, p.usia_anak, p.status]; }));
+        peserta.map(function (p) { return [p.kode, p.nama, A.teksAnggota(p), A.ringkasJK(p), p.asal, p.vip ? A.teksVip() : '', p.wa, p.jenis_nama, p.orang, p.jumlah_anak, p.usia_anak, p.status]; }));
       A.unduh('daftar-peserta-lunas.csv', A.csv(rows));
     });
   })();

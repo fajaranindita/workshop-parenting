@@ -16,7 +16,7 @@
 
   <script src="config.js"></script>
   <script src="app.js"></script>
-  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.26d'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.26e'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
   <script>
   (function () {
     var A = App, isi = A.$('#isi'), t = A.param('t');
@@ -24,10 +24,11 @@
     isi.innerHTML = A.memuat('Memuat e-tiket…');
 
     A.api('tiket', { t: t }).then(function (r) {
+      A.setLabelVip(r.tiket.acara);
       var k = r.tiket, a = k.acara;
       document.title = 'E-Tiket ' + k.nama;
       var h = '<div class="tiket' + (k.vip ? ' tiket-vip' : '') + '">';
-      h += '<div class="atas"><small>' + (k.vip ? '★ E-TIKET VIP' : 'E-TIKET') + '</small><h2>' + A.esc(a.nama_acara) + '</h2>';
+      h += '<div class="atas"><small>' + (k.vip ? '★ E-TIKET ' + A.esc(A.teksVip()) : 'E-TIKET') + '</small><h2>' + A.esc(a.nama_acara) + '</h2>';
       if (a.tanggal_acara) h += '<div style="margin-top:6px">📅 ' + A.fmtTanggal(a.tanggal_acara) + ', ' + A.fmtJam(a.tanggal_acara) + '</div>';
       if (a.lokasi) h += '<div>📍 ' + A.esc(a.lokasi) + '</div>';
       h += '</div>';

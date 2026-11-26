@@ -218,15 +218,20 @@
     daftarOrang(p).forEach(function (o) { if (o.jk === 'L') l++; else if (o.jk === 'P') pr++; else x++; });
     return [l ? l + ' L' : '', pr ? pr + ' P' : '', x ? x + ' ?' : ''].filter(Boolean).join(' · ');
   }
-  function badgeVip(p) { return p && p.vip ? ' <span class="badge vip">VIP</span>' : ''; }
+  // Tulisan penanda tiket khusus (default VIP), diatur di Pengaturan Acara
+  var labelVip = 'VIP';
+  function setLabelVip(acara) { if (acara && acara.label_vip) labelVip = acara.label_vip; }
+  function teksVip() { return labelVip; }
+  function badgeVip(p) { return p && p.vip ? ' <span class="badge vip">' + esc(labelVip) + '</span>' : ''; }
 
   window.App = {
-    VERSI: '2026.11.26d', // naikkan bersama semua halaman setiap rilis
+    VERSI: '2026.11.26e', // naikkan bersama semua halaman setiap rilis
 
     api: api, rupiah: rupiah, keDate: keDate, fmtTanggal: fmtTanggal, fmtJam: fmtJam, fmtWaktu: fmtWaktu,
     esc: esc, formatKet: formatKet, param: param, $: $, $$: $$, toast: toast, salin: salin, badge: badge, LABEL_STATUS: LABEL_STATUS,
     halaman: halaman, linkWA: linkWA, simpan: simpan, ambil: ambil, hapus: hapus, siapkanFile: siapkanFile,
     hitungMundur: hitungMundur, memuat: memuat, csv: csv, unduh: unduh,
+    setLabelVip: setLabelVip, teksVip: teksVip,
     labelAnggota: labelAnggota, LABEL_JK: LABEL_JK, daftarOrang: daftarOrang, ringkasJK: ringkasJK, teksAnggota: teksAnggota, badgeVip: badgeVip
   };
 })();

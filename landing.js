@@ -1,5 +1,5 @@
 /* Landing page — dirender dari data `publik` (isi teks diatur di dashboard, tab Landing Page) */
-window.LANDING_VERSI = '2026.11.26d';
+window.LANDING_VERSI = '2026.11.26e';
 (function () {
   'use strict';
   var A = window.App;
@@ -166,7 +166,7 @@ window.LANDING_VERSI = '2026.11.26d';
       h += '<div class="' + kelas + '">';
       h += '<div class="lp-harga-atas"><span class="lp-harga-nama">' + esc(k.nama) + '</span>';
       if (hemat > 0) h += '<span class="lp-pil-emas">Hemat ' + A.rupiah(hemat) + '</span>';
-      else if (k.vip) h += '<span class="lp-pil-emas">VIP</span>';
+      else if (k.vip) h += '<span class="lp-pil-emas">' + esc(A.teksVip()) + '</span>';
       h += '</div>';
       if (k.keterangan) h += '<p class="lp-harga-ket">' + A.formatKet(k.keterangan) + '</p>';
       if (hemat > 0) h += '<p class="lp-harga-coret">' + A.rupiah(k.harga_normal) + '</p>';

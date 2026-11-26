@@ -1,5 +1,5 @@
 /* Dashboard panitia */
-window.ADMIN_VERSI = '2026.11.26d';
+window.ADMIN_VERSI = '2026.11.26e';
 (function () {
   'use strict';
   var A = App, $ = A.$, $$ = A.$$, esc = A.esc;
@@ -32,7 +32,7 @@ window.ADMIN_VERSI = '2026.11.26d';
   }
 
   function masuk(me) {
-    S.admin = me.admin; S.bank = me.bank; S.acara = me.acara; S.batasJam = me.batas_bayar_jam; S.asal = me.asal || [];
+    S.admin = me.admin; S.bank = me.bank; S.acara = me.acara; A.setLabelVip(me.acara); S.batasJam = me.batas_bayar_jam; S.asal = me.asal || [];
     $('#vLogin').hidden = true;
     $('#vUtama').hidden = false;
     $('#judulAcara').textContent = S.acara.nama_acara || 'Dashboard';
@@ -153,7 +153,7 @@ window.ADMIN_VERSI = '2026.11.26d';
   $('#btnCsv').addEventListener('click', function () {
     var kol = ['kode', 'status', 'vip', 'nama', 'anggota', 'jenis_kelamin', 'asal', 'wa', 'email', 'jenis_nama', 'orang', 'jumlah_anak', 'usia_anak', 'harga_tiket', 'biaya_anak', 'kode_unik', 'nominal', 'dibuat', 'diverifikasi_oleh', 'diverifikasi_waktu', 'checkin_waktu', 'pertanyaan'];
     var rows = [kol].concat(S.peserta.map(function (p) {
-      return kol.map(function (k) { return k === 'anggota' ? A.teksAnggota(p) : k === 'jenis_kelamin' ? A.ringkasJK(p) : k === 'vip' ? (p.vip ? 'VIP' : '') : p[k]; });
+      return kol.map(function (k) { return k === 'anggota' ? A.teksAnggota(p) : k === 'jenis_kelamin' ? A.ringkasJK(p) : k === 'vip' ? (p.vip ? A.teksVip() : '') : p[k]; });
     }));
     A.unduh('peserta-' + new Date().toISOString().slice(0, 10) + '.csv', A.csv(rows));
   });
@@ -162,7 +162,7 @@ window.ADMIN_VERSI = '2026.11.26d';
     var rows = [['kode', 'status', 'nama', 'jenis_kelamin', 'peran', 'asal', 'jenis_tiket', 'vip', 'wa_pendaftar', 'checkin_waktu']];
     S.peserta.filter(function (p) { return p.status === 'lunas' || p.status === 'hadir'; }).forEach(function (p) {
       A.daftarOrang(p).forEach(function (o) {
-        rows.push([p.kode, p.status, o.nama, A.LABEL_JK[o.jk] || '', o.peran, p.asal, p.jenis_nama, p.vip ? 'VIP' : '', p.wa, p.checkin_waktu]);
+        rows.push([p.kode, p.status, o.nama, A.LABEL_JK[o.jk] || '', o.peran, p.asal, p.jenis_nama, p.vip ? A.teksVip() : '', p.wa, p.checkin_waktu]);
       });
     });
     A.unduh('peserta-per-orang-' + new Date().toISOString().slice(0, 10) + '.csv', A.csv(rows));
@@ -180,7 +180,7 @@ window.ADMIN_VERSI = '2026.11.26d';
       perAsal[a] = (perAsal[a] || 0) + p.orang;
     });
     var baris = function (nama, x, vip) {
-      return '<tr><td>' + esc(nama) + (vip ? ' <span class="badge vip">VIP</span>' : '') + '</td><td class="angka">' + x.L + '</td><td class="angka">' + x.P + '</td>' +
+      return '<tr><td>' + esc(nama) + (vip ? A.badgeVip({ vip: true }) : '') + '</td><td class="angka">' + x.L + '</td><td class="angka">' + x.P + '</td>' +
         (total.x ? '<td class="angka">' + x.x + '</td>' : '') + '<td class="angka"><b>' + (x.L + x.P + x.x) + '</b></td></tr>';
     };
     var h = '<div class="grid2" style="margin-top:12px"><div><h3>Jenis kelamin per tiket</h3><div class="tabel-wrap"><table><thead><tr><th>Tiket</th><th class="angka">Laki-laki</th><th class="angka">Perempuan</th>' +
@@ -561,6 +561,7 @@ window.ADMIN_VERSI = '2026.11.26d';
       '<div class="hint">Muncul di bawah kolom nama. Bisa ditambah aturan gelar atau tenggat koreksi nama, misalnya "Tanpa gelar. Koreksi nama paling lambat H-3".</div></div>';
     h += '<div class="card"><h2>B. Jenis tiket & harga</h2>';
     h += '<div class="grid2"><div>' + f('kapasitas_total', 'Kapasitas total (orang)', 'number', 'min="1"', 'Sudah terdaftar: <b>' + t.orang + ' orang</b>') + '</div><div id="cekKapasitas" style="padding-top:38px"></div></div>';
+    h += '<div class="grid2"><div>' + f('label_vip', 'Tulisan penanda tiket khusus', 'text', 'maxlength="20" placeholder="VIP"', 'Muncul sebagai lencana di tiket yang dicentang khusus: formulir, kartu harga, e-tiket, dashboard, dan layar check-in. Contoh: VIP, SPECIAL') + '</div></div>';
     h += '<p class="hint" style="margin-top:12px">Harga berlaku per tiket. Kursi = kuota × orang per tiket (contoh: Grup 5 orang dengan kuota 20 = 100 kursi). <b>Tampilan</b>: <b>Aktif</b> = bisa dibeli; <b>Abu-abu</b> = terlihat tetapi tidak bisa dipilih; <b>Sembunyi</b> = tidak muncul sama sekali. <b>Dijual</b>: pilih <i>Hanya tanggal tertentu</i> untuk tiket acara offline/pre-sale; pada tanggal itu tiket bisa dibeli walaupun pendaftaran umum belum dibuka. Terjual termasuk yang masih menunggu pembayaran; tiket yang sudah ada pendaftarnya tidak bisa dihapus.</p>';
     h += '<div id="tbJenis" class="jt-daftar"></div>';
     h += '<button class="btn sekunder kecil" id="tambahJenis">+ Tambah jenis tiket</button></div>';
@@ -617,7 +618,7 @@ window.ADMIN_VERSI = '2026.11.26d';
     $('#tbJenis').innerHTML = S.jenisEdit.map(function (j, i) {
       var berjadwal = (j.tanggal_jual || []).length > 0 || j._berjadwal;
       var h = '<div class="jt-kartu jt-' + (j.tampilan || 'aktif') + '" data-i="' + i + '">';
-      h += '<div class="jt-kepala"><b>' + (esc(j.nama) || 'Tiket baru') + '</b>' + (j.vip ? ' <span class="badge vip">VIP</span>' : '') +
+      h += '<div class="jt-kepala"><b>' + (esc(j.nama) || 'Tiket baru') + '</b>' + A.badgeVip(j) +
         '<span class="jt-terjual">Terjual: <b>' + j.terpakai + '</b></span>' +
         (j.terpakai ? '' : '<button class="btn sekunder kecil" data-hapus="' + i + '" type="button">Hapus</button>') + '</div>';
       h += '<div class="jt-grid">';
@@ -642,7 +643,7 @@ window.ADMIN_VERSI = '2026.11.26d';
         h += '<div class="jt-lebar"><label>Teks saat abu-abu <span class="opsional">(opsional)</span></label><input type="text" data-f="catatan_abu" maxlength="120" value="' + esc(j.catatan_abu || '') + '" placeholder="' +
           (berjadwal ? 'Otomatis: Hanya dijual pada (tanggal)' : 'Otomatis: Belum tersedia') + '"></div>';
       }
-      h += '<div class="jt-cek"><label class="cek"><input type="checkbox" data-f="vip"' + (j.vip ? ' checked' : '') + '> <span>Tiket VIP</span></label></div>';
+      h += '<div class="jt-cek"><label class="cek"><input type="checkbox" data-f="vip"' + (j.vip ? ' checked' : '') + '> <span>Tiket ' + esc(A.teksVip()) + '</span></label></div>';
       return h + '</div></div>';
     }).join('');
 
@@ -719,7 +720,7 @@ window.ADMIN_VERSI = '2026.11.26d';
     apiA('simpanPengaturan', d).then(function (r) {
       A.toast(r.pesan);
       return apiA('me').then(function (me) {
-        S.bank = me.bank; S.acara = me.acara; S.batasJam = me.batas_bayar_jam; S.asal = me.asal || [];
+        S.bank = me.bank; S.acara = me.acara; A.setLabelVip(me.acara); S.batasJam = me.batas_bayar_jam; S.asal = me.asal || [];
         $('#mBank').textContent = S.bank; $('#judulAcara').textContent = S.acara.nama_acara;
       }).then(muatPengaturan);
     }).catch(function (e) {
@@ -734,7 +735,7 @@ window.ADMIN_VERSI = '2026.11.26d';
     var akhirEB = A.keDate(c.early_bird_akhir ? c.early_bird_akhir + 'T23:59' : '');
     var eb = !!akhirEB && new Date() <= akhirEB;
     var data = {
-      acara: { nama_acara: c.nama_acara, deskripsi: c.deskripsi, tanggal_acara: c.tanggal_acara, lokasi: c.lokasi, link_maps: c.link_maps, kontak_wa: c.kontak_wa },
+      acara: { nama_acara: c.nama_acara, deskripsi: c.deskripsi, tanggal_acara: c.tanggal_acara, lokasi: c.lokasi, link_maps: c.link_maps, kontak_wa: c.kontak_wa, label_vip: c.label_vip || 'VIP' },
       status: 'buka', buka: c.buka, tutup: c.tutup, early_bird: eb, early_bird_akhir: c.early_bird_akhir,
       batas_bayar_jam: Number(c.batas_bayar_jam) || 24,
       asal: String(c.asal_daftar || '').split(/[\n|]/).map(function (x) { return x.trim(); }).filter(function (x) { return x && x.toLowerCase() !== 'lainnya'; }),
@@ -821,7 +822,7 @@ window.ADMIN_VERSI = '2026.11.26d';
     var opsiSorot = '<option value="">Tidak ada (semua kartu putih)</option>' + S.landing.tiket.map(function (t) {
       return '<option value="' + esc(t.id) + '"' + (L.harga.sorot === t.id ? ' selected' : '') + '>' + esc(t.nama) + (t.aktif ? '' : ' (nonaktif)') + '</option>';
     }).join('');
-    h += '<div class="card"><h2>5. Harga</h2><p class="hint">Kartu harga dibuat otomatis dari semua jenis tiket yang <b>aktif</b> di Pengaturan Acara, lengkap dengan harga early bird, sisa kuota, dan status buka/tutup. Tiket VIP otomatis berwarna hijau tua.</p>' +
+    h += '<div class="card"><h2>5. Harga</h2><p class="hint">Kartu harga dibuat otomatis dari semua jenis tiket yang <b>aktif</b> di Pengaturan Acara, lengkap dengan harga early bird, sisa kuota, dan status buka/tutup. Tiket ' + esc(A.teksVip()) + ' otomatis berwarna hijau tua.</p>' +
       teks('harga.judul', 'Judul bagian') + '<label>Kartu yang ditonjolkan (warna merah)</label><select data-l="harga.sorot">' + opsiSorot + '</select>' +
       teks('harga.catatan', 'Catatan di bawah kartu (merah)') + '</div>';
 
