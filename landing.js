@@ -1,5 +1,5 @@
 /* Landing page — dirender dari data `publik` (isi teks diatur di dashboard, tab Landing Page) */
-window.LANDING_VERSI = '2026.11.26f';
+window.LANDING_VERSI = '2026.11.26g';
 (function () {
   'use strict';
   var A = window.App;
