@@ -1,5 +1,5 @@
 /* Dashboard panitia */
-window.ADMIN_VERSI = '2026.11.25';
+window.ADMIN_VERSI = '2026.11.26';
 (function () {
   'use strict';
   var A = App, $ = A.$, $$ = A.$$, esc = A.esc;
@@ -38,6 +38,7 @@ window.ADMIN_VERSI = '2026.11.25';
     $('#judulAcara').textContent = S.acara.nama_acara || 'Dashboard';
     $('#infoAdmin').textContent = S.admin.nama + ' (' + S.admin.peran + ')';
     $('#tabPengaturan').hidden = S.admin.peran !== 'koordinator';
+    $('#tabLanding').hidden = S.admin.peran !== 'koordinator';
     $('#mBank').textContent = S.bank;
     muatPeserta();
   }
@@ -74,8 +75,10 @@ window.ADMIN_VERSI = '2026.11.25';
     $('#tPeserta').hidden = nama !== 'peserta';
     $('#tMutasi').hidden = nama !== 'mutasi';
     $('#tPengaturan').hidden = nama !== 'pengaturan';
+    $('#tLanding').hidden = nama !== 'landing';
     $('#tLog').hidden = nama !== 'log';
     if (nama === 'pengaturan') muatPengaturan();
+    if (nama === 'landing') muatLanding();
     if (nama === 'log') muatLog();
     if (nama === 'mutasi' && !S.peserta.length) muatPeserta();
   }
@@ -572,7 +575,9 @@ window.ADMIN_VERSI = '2026.11.25';
     h += '</div></div>';
 
     h += '<div class="card"><h2>D. Pembayaran</h2><div class="grid2">';
-    h += '<div><label for="c_bank">Bank</label><select id="c_bank" data-k="bank"><option' + (c.bank === 'BCA' ? ' selected' : '') + '>BCA</option><option' + (c.bank === 'Mandiri' ? ' selected' : '') + '>Mandiri</option></select><div class="hint">Juga menentukan format mutasi yang dicocokkan.</div></div>';
+    h += '<div><label for="c_bank">Bank</label><select id="c_bank" data-k="bank">' + ['BCA', 'Mandiri', 'BSI'].map(function (b) {
+      return '<option value="' + b + '"' + (c.bank === b ? ' selected' : '') + '>' + (b === 'BSI' ? 'BSI (Bank Syariah Indonesia)' : b) + '</option>';
+    }).join('') + '</select><div class="hint">Rekening tujuan transfer yang ditampilkan ke peserta.</div></div>';
     h += '<div>' + f('no_rekening', 'Nomor rekening', 'text', 'inputmode="numeric"') + '</div>';
     h += '<div>' + f('atas_nama', 'Atas nama') + '</div>';
     h += '</div></div>';
@@ -695,6 +700,134 @@ window.ADMIN_VERSI = '2026.11.25';
     };
     A.simpan('ws_pratinjau', data);
     window.open('index.html?pratinjau=1', '_blank');
+  }
+
+  // ---------------- Landing page ----------------
+  function muatLanding() {
+    $('#lIsi').innerHTML = A.memuat('Memuat landing page…');
+    apiA('getLanding').then(function (r) { S.landing = r; renderLanding(); })
+      .catch(function (e) { $('#lIsi').innerHTML = '<div class="banner danger">' + esc(e.message) + '</div>'; });
+  }
+
+  /** Ambil nilai bertingkat, mis. ambilJalur(obj, 'hero.judul') */
+  function ambilJalur(o, jalur) { return jalur.split('.').reduce(function (x, k) { return x == null ? x : x[k]; }, o); }
+  function setelJalur(o, jalur, v) {
+    var bag = jalur.split('.'), akhir = bag.pop();
+    bag.reduce(function (x, k) { return x[k] = x[k] || {}; }, o)[akhir] = v;
+  }
+
+  function renderLanding() {
+    var L = S.landing.landing;
+    var teks = function (jalur, label, hint, panjang) {
+      var v = ambilJalur(L, jalur) || '';
+      return '<label>' + label + '</label>' + (panjang
+        ? '<textarea data-l="' + jalur + '">' + esc(v) + '</textarea>'
+        : '<input type="text" data-l="' + jalur + '" value="' + esc(v) + '">') + (hint ? '<div class="hint">' + hint + '</div>' : '');
+    };
+    var baris = function (jalur, label, hint) {
+      return '<label>' + label + ' <span class="opsional">(satu per baris)</span></label><textarea data-l-baris="' + jalur + '" style="min-height:120px">' +
+        esc((ambilJalur(L, jalur) || []).join('\n')) + '</textarea>' + (hint ? '<div class="hint">' + hint + '</div>' : '');
+    };
+    var pasang = function (jalur, kunci, label, contoh) {
+      return '<label>' + label + ' <span class="opsional">(satu per baris, format: ' + contoh + ')</span></label><textarea data-l-pasang="' + jalur + '" data-kunci="' + kunci + '" style="min-height:110px">' +
+        esc((ambilJalur(L, jalur) || []).map(function (x) { return kunci.split(',').map(function (k) { return x[k] || ''; }).join(' | '); }).join('\n')) + '</textarea>';
+    };
+    var h = '';
+    h += '<div class="card"><h2>Landing page</h2>';
+    h += '<label class="cek"><input type="checkbox" id="lAktif"' + (S.landing.aktif ? ' checked' : '') + '> <span><b>Tampilkan landing page</b> di halaman utama. Jika dimatikan, pengunjung langsung melihat formulir pendaftaran.</span></label>';
+    h += '<p class="hint" style="margin-top:10px">Tanggal, jam, lokasi, harga, early bird, dan sisa kuota diambil otomatis dari <b>Pengaturan Acara</b>. Di semua teks bisa dipakai kode <code>{tanggal}</code>, <code>{jam}</code>, <code>{lokasi}</code>, dan <code>{nama_acara}</code>. Bagian yang dikosongkan tidak ditampilkan.</p></div>';
+
+    h += '<div class="card"><h2>1. Header & pembuka</h2><div class="grid2">';
+    h += '<div>' + teks('header.organisasi', 'Nama penyelenggara (kiri atas)') + '</div><div>' + teks('header.label', 'Label di samping nama', 'Misalnya SQUAD 23') + '</div>';
+    h += '<div>' + teks('hero.lencana', 'Lencana', 'Lencana merah EARLY BIRD muncul otomatis selama masa early bird') + '</div><div>' + teks('header.tombol', 'Tombol di header') + '</div></div>';
+    h += teks('hero.judul', 'Judul besar') + teks('hero.kutipan', 'Kutipan (huruf miring emas)') + teks('hero.deskripsi', 'Deskripsi singkat', '', true);
+    h += '<div class="grid2"><div>' + teks('hero.tombol', 'Tombol utama', 'Membawa pengunjung ke bagian harga') + '</div><div>' + teks('hero.tanya', 'Teks tautan tanya via WhatsApp', 'Menuju kontak pertama di bagian penutup') + '</div>';
+    h += '<div>' + teks('hero.foto', 'Foto utama', 'Nama file di folder <code>assets/</code> GitHub (mis. <code>assets/pembicara.jpg</code>) atau alamat https://') + '</div><div>' + teks('hero.foto_alt', 'Keterangan foto (untuk pembaca layar)') + '</div></div></div>';
+
+    h += '<div class="card"><h2>2. Pernahkah merasakan ini?</h2>' + teks('masalah.label', 'Label kecil') + teks('masalah.judul', 'Judul') +
+      baris('masalah.poin', 'Poin kegelisahan') + teks('masalah.paragraf', 'Paragraf penjelasan', '', true) + teks('masalah.penutup', 'Kalimat penutup (tebal)') + '</div>';
+
+    h += '<div class="card"><h2>3. Manfaat</h2>' + teks('manfaat.judul', 'Judul') + teks('manfaat.deskripsi', 'Deskripsi', '', true) +
+      pasang('manfaat.kartu', 'judul,isi', 'Kartu manfaat', 'Judul | Isi') +
+      '<div class="grid2"><div>' + teks('manfaat.bawa_judul', 'Judul daftar kiri') + baris('manfaat.bawa', 'Isi daftar kiri') + '</div>' +
+      '<div>' + teks('manfaat.cocok_judul', 'Judul daftar kanan') + baris('manfaat.cocok', 'Isi daftar kanan') + '</div></div></div>';
+
+    h += '<div class="card"><h2>4. Pembicara</h2><div class="grid2"><div>' + teks('pembicara.label', 'Label kecil') + '</div><div>' + teks('pembicara.nama', 'Nama pembicara', 'Kosongkan untuk menyembunyikan bagian ini') + '</div></div>' +
+      teks('pembicara.bio', 'Bio singkat', '', true) + teks('pembicara.foto', 'Foto (dibuat bulat)', 'Boleh sama dengan foto utama') +
+      pasang('pembicara.statistik', 'angka,label', 'Angka pencapaian', 'Angka | Keterangan') +
+      teks('pembicara.testimoni', 'Testimoni', '', true) + teks('pembicara.testimoni_oleh', 'Nama pemberi testimoni') + '</div>';
+
+    var opsiSorot = '<option value="">Tidak ada (semua kartu putih)</option>' + S.landing.tiket.map(function (t) {
+      return '<option value="' + esc(t.id) + '"' + (L.harga.sorot === t.id ? ' selected' : '') + '>' + esc(t.nama) + (t.aktif ? '' : ' (nonaktif)') + '</option>';
+    }).join('');
+    h += '<div class="card"><h2>5. Harga</h2><p class="hint">Kartu harga dibuat otomatis dari semua jenis tiket yang <b>aktif</b> di Pengaturan Acara, lengkap dengan harga early bird, sisa kuota, dan status buka/tutup. Tiket VIP otomatis berwarna hijau tua.</p>' +
+      teks('harga.judul', 'Judul bagian') + '<label>Kartu yang ditonjolkan (warna merah)</label><select data-l="harga.sorot">' + opsiSorot + '</select>' +
+      teks('harga.catatan', 'Catatan di bawah kartu (merah)') + '</div>';
+
+    h += '<div class="card"><h2>6. Pita rangkaian acara</h2><p class="hint">Kosongkan judul untuk menyembunyikan pita kuning ini.</p><div class="grid2"><div>' + teks('rangkaian.label', 'Label kecil') + '</div><div>' + teks('rangkaian.judul', 'Judul') + '</div></div>' +
+      teks('rangkaian.isi', 'Isi', '', true) + '<div class="grid2"><div>' + teks('rangkaian.link_teks', 'Teks tautan') + '</div><div>' + teks('rangkaian.link_url', 'Alamat tautan (https://…)', 'Kosongkan jika belum ada') + '</div></div></div>';
+
+    h += '<div class="card"><h2>7. Pertanyaan yang sering muncul (FAQ)</h2><div id="lFaq"></div><button class="btn sekunder kecil" type="button" id="lTambahFaq" style="margin-top:10px">+ Tambah pertanyaan</button></div>';
+
+    h += '<div class="card"><h2>8. Penutup & kontak</h2><div class="grid2"><div>' + teks('penutup.judul1', 'Judul baris 1') + '</div><div>' + teks('penutup.judul2', 'Judul baris 2 (emas)') + '</div></div>' +
+      teks('penutup.deskripsi', 'Kalimat di bawah judul') + pasang('penutup.kontak', 'nama,wa', 'Kontak WhatsApp', 'Nama | Nomor WA') +
+      teks('footer', 'Teks footer') +
+      '<label class="cek" style="margin-top:14px"><input type="checkbox" id="lAhad"' + (L.ahad ? ' checked' : '') + '> <span>Tulis hari Minggu sebagai <b>Ahad</b></span></label></div>';
+
+    h += '<div class="card" style="position:sticky;bottom:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
+      '<button class="btn" id="lSimpan">Simpan landing page</button><button class="btn sekunder" id="lPratinjau">Pratinjau</button><span class="hint" id="lPesan"></span></div>';
+    $('#lIsi').innerHTML = h;
+    renderFaq(L.faq || []);
+    $('#lTambahFaq').addEventListener('click', function () { var f = kumpulkanFaq(); f.push({ t: '', j: '' }); renderFaq(f); });
+    $('#lSimpan').addEventListener('click', simpanLanding);
+    $('#lPratinjau').addEventListener('click', function () {
+      A.simpan('ws_pratinjau_landing', kumpulkanLanding());
+      window.open('index.html?pratinjau=landing', '_blank');
+    });
+  }
+
+  function renderFaq(list) {
+    $('#lFaq').innerHTML = list.map(function (q, i) {
+      return '<div class="faq-baris"><div class="baris-isi"><input type="text" class="fT" placeholder="Pertanyaan" value="' + esc(q.t) + '">' +
+        '<button class="btn sekunder kecil fHapus" type="button" data-i="' + i + '">Hapus</button></div>' +
+        '<textarea class="fJ" placeholder="Jawaban" style="margin-top:6px;min-height:64px">' + esc(q.j) + '</textarea></div>';
+    }).join('') || '<p class="muted">Belum ada pertanyaan.</p>';
+    $$('#lFaq .fHapus').forEach(function (b) {
+      b.addEventListener('click', function () { var f = kumpulkanFaq(); f.splice(+b.getAttribute('data-i'), 1); renderFaq(f); });
+    });
+  }
+  function kumpulkanFaq() {
+    return $$('#lFaq .faq-baris').map(function (r) { return { t: r.querySelector('.fT').value.trim(), j: r.querySelector('.fJ').value.trim() }; });
+  }
+
+  function kumpulkanLanding() {
+    var L = JSON.parse(JSON.stringify(S.landing.landing));
+    $$('#lIsi [data-l]').forEach(function (el) { setelJalur(L, el.getAttribute('data-l'), el.value.trim()); });
+    $$('#lIsi [data-l-baris]').forEach(function (el) {
+      setelJalur(L, el.getAttribute('data-l-baris'), el.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean));
+    });
+    $$('#lIsi [data-l-pasang]').forEach(function (el) {
+      var kunci = el.getAttribute('data-kunci').split(',');
+      setelJalur(L, el.getAttribute('data-l-pasang'), el.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean).map(function (x) {
+        var bag = x.split('|'), o = {};
+        kunci.forEach(function (k, i) { o[k] = i === kunci.length - 1 ? bag.slice(i).join('|').trim() : (bag[i] || '').trim(); });
+        return o;
+      }));
+    });
+    L.faq = kumpulkanFaq().filter(function (q) { return q.t; });
+    L.ahad = $('#lAhad').checked;
+    return L;
+  }
+
+  function simpanLanding() {
+    var btn = $('#lSimpan'); btn.disabled = true; btn.textContent = 'Menyimpan…';
+    apiA('simpanLanding', { aktif: $('#lAktif').checked, landing: kumpulkanLanding() }).then(function (r) {
+      A.toast(r.pesan); $('#lPesan').textContent = r.pesan; muatLanding();
+    }).catch(function (e) {
+      A.toast(e.message, true);
+      $('#lPesan').innerHTML = '<span style="color:var(--danger)">' + esc(e.message) + '</span>';
+      btn.disabled = false; btn.textContent = 'Simpan landing page';
+    });
   }
 
   // ---------------- Log ----------------
