@@ -1,5 +1,5 @@
 /* Dashboard panitia */
-window.ADMIN_VERSI = '2026.11.26h';
+window.ADMIN_VERSI = '2026.11.27';
 (function () {
   'use strict';
   var A = App, $ = A.$, $$ = A.$$, esc = A.esc;
@@ -829,6 +829,15 @@ window.ADMIN_VERSI = '2026.11.26h';
 
     h += '<div class="card"><h2>1. Header & pembuka</h2><div class="grid2">';
     h += '<div>' + teks('header.organisasi', 'Nama penyelenggara (kiri atas)') + '</div><div>' + teks('header.label', 'Label di samping nama', 'Misalnya SQUAD 23') + '</div>';
+    var LABEL_LOGO = [['', 'Tidak (pakai tulisan label)'], ['assets/logo/logo-squad23.png', 'Logo Squad 23']];
+    var labelLogo = L.header.label_logo || '';
+    var labelDikenal = LABEL_LOGO.some(function (x) { return x[0] === labelLogo; });
+    h += '<div><label>Logo pengganti label</label><select id="lLabelPilih">' + LABEL_LOGO.map(function (x) {
+      return '<option value="' + x[0] + '"' + (x[0] === labelLogo ? ' selected' : '') + '>' + x[1] + '</option>';
+    }).join('') + '<option value="__lain"' + (labelDikenal ? '' : ' selected') + '>Logo lain (tulis alamat file)…</option></select>' +
+      '<input type="text" id="lLabelFile" data-l="header.label_logo" value="' + esc(labelLogo) + '" placeholder="assets/logo/nama-file.png" style="margin-top:8px"' + (labelDikenal ? ' hidden' : '') + '>' +
+      '<div class="hint">Jika dipilih, gambar ini tampil menggantikan tulisan label di header. Tulisan label tetap dipakai sebagai keterangan gambar.</div></div>';
+    h += '<div><label>Pratinjau logo label</label><div class="logo-pratinjau tanpa-latar" id="lLabelPratinjau"><img id="lLabelGambar" alt="Pratinjau logo label"></div></div>';
     h += '<div>' + teks('hero.lencana', 'Lencana', 'Lencana merah EARLY BIRD muncul otomatis selama masa early bird') + '</div><div>' + teks('header.tombol', 'Tombol di header') + '</div></div>';
     h += teks('hero.judul', 'Judul besar') + teks('hero.kutipan', 'Kutipan (huruf miring emas)') + teks('hero.deskripsi', 'Deskripsi singkat', '', true);
     h += '<div class="grid2"><div>' + teks('hero.tombol', 'Tombol utama', 'Membawa pengunjung ke bagian harga') + '</div><div>' + teks('hero.tanya', 'Teks tautan tanya via WhatsApp', 'Menuju kontak pertama di bagian penutup') + '</div>';
@@ -875,6 +884,16 @@ window.ADMIN_VERSI = '2026.11.26h';
       gambarLogo.src = isiLogo.value;
       gambarLogo.parentNode.classList.toggle('tanpa-latar', $('[data-l="logo.latar"]').value === 'tanpa');
     };
+    var pilihLabel = $('#lLabelPilih'), isiLabel = $('#lLabelFile');
+    var perbaruiLabel = function () {
+      if (pilihLabel.value !== '__lain') isiLabel.value = pilihLabel.value;
+      isiLabel.hidden = pilihLabel.value !== '__lain';
+      $('#lLabelGambar').src = isiLabel.value || '';
+      $('#lLabelPratinjau').hidden = !isiLabel.value;
+    };
+    pilihLabel.addEventListener('change', perbaruiLabel);
+    isiLabel.addEventListener('change', perbaruiLabel);
+    perbaruiLabel();
     pilihLogo.addEventListener('change', perbaruiLogo);
     isiLogo.addEventListener('change', perbaruiLogo);
     $('[data-l="logo.latar"]').addEventListener('change', perbaruiLogo);

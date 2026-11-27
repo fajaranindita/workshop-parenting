@@ -1,5 +1,5 @@
 /* Landing page — dirender dari data `publik` (isi teks diatur di dashboard, tab Landing Page) */
-window.LANDING_VERSI = '2026.11.26h';
+window.LANDING_VERSI = '2026.11.27';
 (function () {
   'use strict';
   var A = window.App;
@@ -44,8 +44,9 @@ window.LANDING_VERSI = '2026.11.26h';
 
     // ---------- Header ----------
     h += '<header class="lp-header"><div class="lp-isi lp-baris">';
-    h += '<div class="lp-merek">' + logo('header') + '<span class="lp-org">' + t(L.header.organisasi) + '</span>';
-    if (ada(L.header.label)) h += '<span class="lp-garis"></span><span class="lp-label">' + t(L.header.label) + '</span>';
+    h += '<div class="lp-merek">' + logo('header') + (ada(L.header.organisasi) ? '<span class="lp-org">' + t(L.header.organisasi) + '</span>' : '');
+    if (ada(L.header.label_logo)) h += '<span class="lp-garis"></span><img class="lp-label-logo" src="' + esc(L.header.label_logo) + '" alt="' + t(L.header.label || 'Logo') + '">';
+    else if (ada(L.header.label)) h += '<span class="lp-garis"></span><span class="lp-label">' + t(L.header.label) + '</span>';
     h += '</div><a class="lp-btn lp-btn-emas lp-btn-kecil" href="#harga">' + t(L.header.tombol || 'Pesan Tiket') + '</a></div></header>';
 
     // ---------- Hero ----------
