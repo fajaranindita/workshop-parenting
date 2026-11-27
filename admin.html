@@ -49,6 +49,7 @@
         <button class="tab" data-tab="mutasi">Cocokkan Mutasi</button>
         <button class="tab" data-tab="pengaturan" id="tabPengaturan" hidden>Pengaturan Acara</button>
         <button class="tab" data-tab="landing" id="tabLanding" hidden>Landing Page</button>
+        <button class="tab" data-tab="sponsor">Sponsor</button>
         <button class="tab" data-tab="log">Log</button>
       </div>
 
@@ -90,6 +91,25 @@
       <!-- Tab Landing Page -->
       <section id="tLanding" hidden><div id="lIsi"></div></section>
 
+      <section id="tSponsor" hidden>
+        <div class="chips" id="spMode"></div>
+        <div id="spDaftar">
+          <div class="statgrid" id="spStat"></div>
+          <div class="chips" id="spChips"></div>
+          <div class="alat">
+            <input type="text" id="spCari" placeholder="Cari instansi, nama, nomor WA, atau paket…">
+            <button class="btn sekunder" id="spMuat">Muat ulang</button>
+            <button class="btn sekunder" id="spCsv">Export CSV</button>
+          </div>
+          <div class="tabel-wrap"><table>
+            <thead><tr><th>Masuk</th><th>Paket</th><th>Instansi &amp; nama</th><th>Kontak</th><th>Status</th><th></th></tr></thead>
+            <tbody id="tbSponsor"></tbody>
+          </table></div>
+          <p class="hint">Calon sponsor yang mengisi formulir di halaman kemitraan muncul di sini. Hubungi lewat WhatsApp, lalu perbarui statusnya agar panitia lain tahu.</p>
+        </div>
+        <div id="spAtur" hidden></div>
+      </section>
+
       <!-- Tab Log -->
       <section id="tLog" hidden>
         <div class="alat"><button class="btn sekunder" id="btnLog">Muat ulang</button></div>
@@ -106,10 +126,10 @@
 
   <script src="config.js"></script>
   <script src="app.js"></script>
-  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.27'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.28'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
   <script src="admin.js"></script>
   <script>
-    if (window.ADMIN_VERSI !== '2026.11.27') {
+    if (window.ADMIN_VERSI !== '2026.11.28') {
       var d = document.createElement('div');
       d.setAttribute('style', 'background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');
       d.textContent = 'Halaman admin belum bisa dipakai: admin.js tidak ditemukan atau berbeda versi dengan admin.html. Unggah ulang SEMUA file folder web/ kecuali config.js.';

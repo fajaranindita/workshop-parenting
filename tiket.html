@@ -16,7 +16,7 @@
   <script src="config.js"></script>
   <script src="app.js"></script>
   <script src="vendor/qrcode.min.js"></script>
-  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.27'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.28'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
   <script>
   (function () {
     var A = App, isi = A.$('#isi'), t = A.param('t');
@@ -54,7 +54,13 @@
       if (k.asal) h += '<dt>Asal</dt><dd>' + A.esc(k.asal) + '</dd>';
       h += '<dt>Tiket</dt><dd>' + A.esc(k.jenis_nama) + ' (' + k.orang + ' orang)</dd>';
       if (k.jumlah_anak) h += '<dt>Penitipan anak</dt><dd>' + k.jumlah_anak + ' anak (usia ' + A.esc(String(k.usia_anak).split(',').join(', ')) + ' th)</dd>';
-      h += '</dl><p class="hint" style="margin-top:14px">Tunjukkan QR code ini kepada panitia saat registrasi ulang. Simpan dengan screenshot atau cetak halaman ini.</p></div></div>';
+      h += '</dl>';
+      if (k.sponsor && (k.sponsor.daftar || []).length) {
+        h += '<div class="tiket-sponsor"><small>' + A.esc(k.sponsor.judul || 'Didukung oleh') + '</small><div>' + k.sponsor.daftar.map(function (x) {
+          return '<img src="' + A.esc(x.file) + '" alt="' + A.esc(x.nama || 'Logo sponsor') + '" onerror="this.style.display=\'none\'">';
+        }).join('') + '</div></div>';
+      }
+      h += '<p class="hint" style="margin-top:14px">Tunjukkan QR code ini kepada panitia saat registrasi ulang. Simpan dengan screenshot atau cetak halaman ini.</p></div></div>';
       h += '<p class="hint no-print" id="catatanCache" style="text-align:center;margin-top:10px">' + A.esc(catatan) + '</p>';
       h += '<div class="btn-grup no-print" style="margin-top:6px;justify-content:center"><button class="btn sekunder" onclick="window.print()">Cetak / Simpan PDF</button></div>';
       isi.innerHTML = h;

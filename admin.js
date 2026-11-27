@@ -1,5 +1,5 @@
 /* Dashboard panitia */
-window.ADMIN_VERSI = '2026.11.27';
+window.ADMIN_VERSI = '2026.11.28';
 (function () {
   'use strict';
   var A = App, $ = A.$, $$ = A.$$, esc = A.esc;
@@ -82,9 +82,11 @@ window.ADMIN_VERSI = '2026.11.27';
     $('#tMutasi').hidden = nama !== 'mutasi';
     $('#tPengaturan').hidden = nama !== 'pengaturan';
     $('#tLanding').hidden = nama !== 'landing';
+    $('#tSponsor').hidden = nama !== 'sponsor';
     $('#tLog').hidden = nama !== 'log';
     if (nama === 'pengaturan') muatPengaturan();
     if (nama === 'landing') muatLanding();
+    if (nama === 'sponsor') bukaSponsor();
     if (nama === 'log') muatLog();
     if (nama === 'mutasi' && !S.peserta.length) muatPeserta();
   }
@@ -949,6 +951,304 @@ window.ADMIN_VERSI = '2026.11.27';
       A.toast(e.message, true);
       $('#lPesan').innerHTML = '<span style="color:var(--danger)">' + esc(e.message) + '</span>';
       btn.disabled = false; btn.textContent = 'Simpan landing page';
+    });
+  }
+
+  // ---------------- Sponsor ----------------
+  var LABEL_SP = { baru: 'Baru', dihubungi: 'Sudah dihubungi', deal: 'Deal', batal: 'Batal' };
+  var URUTAN_SP = ['baru', 'dihubungi', 'deal', 'batal'];
+  var TINGKAT = [['platinum', 'Platinum'], ['gold', 'Gold'], ['silver', 'Silver'], ['bronze', 'Bronze'], ['lain', 'Lainnya']];
+  S.sp = { data: [], filter: 'semua', cari: '', mode: 'daftar', atur: null, termuat: false };
+
+  function bukaSponsor() {
+    var koor = S.admin && S.admin.peran === 'koordinator';
+    $('#spMode').hidden = !koor;
+    $('#spMode').innerHTML = [['daftar', 'Calon sponsor'], ['atur', 'Pengaturan halaman sponsor']].map(function (m) {
+      return '<button class="chip' + (S.sp.mode === m[0] ? ' aktif' : '') + '" data-m="' + m[0] + '">' + m[1] + '</button>';
+    }).join('');
+    $('#spDaftar').hidden = S.sp.mode !== 'daftar';
+    $('#spAtur').hidden = S.sp.mode !== 'atur';
+    if (S.sp.mode === 'atur') muatAturSponsor();
+    else if (!S.sp.termuat) muatSponsor();
+    else renderSponsor();
+  }
+  $('#spMode').addEventListener('click', function (e) {
+    var m = e.target.getAttribute('data-m');
+    if (m) { S.sp.mode = m; bukaSponsor(); }
+  });
+
+  function muatSponsor() {
+    $('#tbSponsor').innerHTML = '<tr><td colspan="6">' + A.memuat() + '</td></tr>';
+    apiA('sponsorList').then(function (r) { S.sp.data = r.sponsor; S.sp.termuat = true; renderSponsor(); })
+      .catch(function (e) { $('#tbSponsor').innerHTML = '<tr><td colspan="6"><div class="banner danger">' + esc(e.message) + '</div></td></tr>'; });
+  }
+  $('#spMuat').addEventListener('click', muatSponsor);
+  $('#spCari').addEventListener('input', function (e) { S.sp.cari = e.target.value; renderSponsor(); });
+  $('#spChips').addEventListener('click', function (e) {
+    var f = e.target.getAttribute('data-f');
+    if (f) { S.sp.filter = f; renderSponsor(); }
+  });
+
+  function badgeSp(st) { return '<span class="badge sp-st-' + st + '">' + esc(LABEL_SP[st] || st) + '</span>'; }
+
+  function renderSponsor() {
+    var d = S.sp.data, c = { semua: d.length };
+    URUTAN_SP.forEach(function (s) { c[s] = d.filter(function (x) { return x.status === s; }).length; });
+    $('#spStat').innerHTML = URUTAN_SP.map(function (s) {
+      return '<div class="stat"><div class="angka">' + c[s] + '</div><div class="lbl">' + LABEL_SP[s] + '</div></div>';
+    }).join('');
+    $('#spChips').innerHTML = ['semua'].concat(URUTAN_SP).map(function (s) {
+      return '<button class="chip' + (S.sp.filter === s ? ' aktif' : '') + '" data-f="' + s + '">' + (s === 'semua' ? 'Semua' : LABEL_SP[s]) + ' (' + c[s] + ')</button>';
+    }).join('');
+    var q = S.sp.cari.toLowerCase().trim();
+    var tampil = d.filter(function (x) {
+      if (S.sp.filter !== 'semua' && x.status !== S.sp.filter) return false;
+      return !q || [x.instansi, x.nama, x.wa, x.paket, x.email, x.id].join(' ').toLowerCase().indexOf(q) >= 0;
+    });
+    $('#tbSponsor').innerHTML = tampil.length ? tampil.map(function (x) {
+      return '<tr><td><small>' + A.fmtWaktu(x.waktu) + '</small></td><td><b>' + esc(x.paket) + '</b></td>' +
+        '<td>' + esc(x.instansi) + '<br><small class="muted">' + esc(x.nama) + '</small></td>' +
+        '<td><small>+' + esc(x.wa) + (x.email ? '<br>' + esc(x.email) : '') + '</small></td>' +
+        '<td>' + badgeSp(x.status) + (x.catatan ? '<br><small class="muted">' + esc(x.catatan.length > 60 ? x.catatan.slice(0, 60) + '…' : x.catatan) + '</small>' : '') + '</td>' +
+        '<td><button class="btn sekunder kecil" data-sp="' + esc(x.id) + '">Detail</button></td></tr>';
+    }).join('') : '<tr><td colspan="6" class="muted">' + (d.length ? 'Tidak ada yang cocok.' : 'Belum ada calon sponsor yang mengisi formulir.') + '</td></tr>';
+    $$('#tbSponsor [data-sp]').forEach(function (b) { b.addEventListener('click', function () { detailSponsor(b.getAttribute('data-sp')); }); });
+  }
+
+  function pesanSponsor(x) {
+    return 'Halo ' + x.nama + ', terima kasih atas minat ' + x.instansi + ' untuk menjadi sponsor ' + (S.acara.nama_acara || 'acara kami') +
+      '. Saya ' + (S.admin.nama || '') + ' dari tim kemitraan. Boleh kami jelaskan lebih lanjut mengenai paket ' + x.paket + '?';
+  }
+
+  function detailSponsor(id) {
+    var x = S.sp.data.filter(function (y) { return y.id === id; })[0];
+    if (!x) return;
+    var h = '<h2>' + esc(x.instansi) + '</h2><p class="muted" style="margin-top:-4px">' + esc(x.id) + ' · masuk ' + A.fmtWaktu(x.waktu) + '</p><dl class="dl">';
+    h += '<dt>Paket</dt><dd><b>' + esc(x.paket) + '</b></dd><dt>Nama</dt><dd>' + esc(x.nama) + '</dd>';
+    h += '<dt>WhatsApp</dt><dd>+' + esc(x.wa) + '</dd><dt>Email</dt><dd>' + (x.email ? '<a href="mailto:' + esc(x.email) + '">' + esc(x.email) + '</a>' : '-') + '</dd>';
+    h += '<dt>Pesan</dt><dd style="white-space:pre-line">' + esc(x.pesan || '-') + '</dd>';
+    if (x.diubah_oleh) h += '<dt>Terakhir diubah</dt><dd>' + esc(x.diubah_oleh) + ', ' + A.fmtWaktu(x.diubah_waktu) + '</dd>';
+    h += '</dl><div class="btn-grup" style="margin:14px 0"><a class="btn wa" target="_blank" rel="noopener" href="' + esc(A.linkWA(x.wa, pesanSponsor(x))) + '">Hubungi via WhatsApp</a>';
+    if (x.email) h += '<a class="btn sekunder" href="mailto:' + esc(x.email) + '?subject=' + encodeURIComponent('Kemitraan ' + (S.acara.nama_acara || '')) + '">Kirim email</a>';
+    h += '</div><label for="spStatus">Status follow-up</label><select id="spStatus">' + URUTAN_SP.map(function (s) {
+      return '<option value="' + s + '"' + (x.status === s ? ' selected' : '') + '>' + LABEL_SP[s] + '</option>';
+    }).join('') + '</select>';
+    h += '<label for="spCatatan">Catatan panitia</label><textarea id="spCatatan" maxlength="1000" placeholder="Misalnya: sudah kirim proposal, tunggu jawaban Senin">' + esc(x.catatan || '') + '</textarea>';
+    h += '<div class="btn-grup" style="margin-top:14px"><button class="btn" id="spSimpanStatus">Simpan</button></div>';
+    bukaModal(h);
+    $('#spSimpanStatus').addEventListener('click', function () {
+      var btn = this; btn.disabled = true; btn.textContent = 'Menyimpan…';
+      apiA('sponsorUbah', { id: x.id, status: $('#spStatus').value, catatan: $('#spCatatan').value }).then(function (r) {
+        S.sp.data = S.sp.data.map(function (y) { return y.id === x.id ? r.sponsor : y; });
+        renderSponsor(); tutupModal(); A.toast('Status tersimpan.');
+      }).catch(function (e) { A.toast(e.message, true); btn.disabled = false; btn.textContent = 'Simpan'; });
+    });
+  }
+
+  $('#spCsv').addEventListener('click', function () {
+    var baris = [['Kode', 'Masuk', 'Paket', 'Nama', 'Instansi', 'WhatsApp', 'Email', 'Pesan', 'Status', 'Catatan', 'Diubah oleh']];
+    S.sp.data.forEach(function (x) {
+      baris.push([x.id, A.fmtWaktu(x.waktu), x.paket, x.nama, x.instansi, '+' + x.wa, x.email, x.pesan, LABEL_SP[x.status], x.catatan, x.diubah_oleh]);
+    });
+    A.unduh('calon-sponsor.csv', A.csv(baris), 'text/csv');
+  });
+
+  // ----- Pengaturan halaman sponsor (koordinator) -----
+  function muatAturSponsor() {
+    $('#spAtur').innerHTML = A.memuat('Memuat pengaturan sponsor…');
+    apiA('getSponsor').then(function (r) { S.sp.atur = r; renderAturSponsor(); })
+      .catch(function (e) { $('#spAtur').innerHTML = '<div class="banner danger">' + esc(e.message) + '</div>'; });
+  }
+
+  function renderAturSponsor() {
+    var P = S.sp.atur.sponsor;
+    var teks = function (jalur, label, hint, panjang) {
+      var v = ambilJalur(P, jalur) || '';
+      return '<label>' + label + '</label>' + (panjang ? '<textarea data-s="' + jalur + '">' + esc(v) + '</textarea>'
+        : '<input type="text" data-s="' + jalur + '" value="' + esc(v) + '">') + (hint ? '<div class="hint">' + hint + '</div>' : '');
+    };
+    var pasang = function (jalur, kunci, label, contoh) {
+      return '<label>' + label + ' <span class="opsional">(satu per baris, format: ' + contoh + ')</span></label><textarea data-s-pasang="' + jalur + '" data-kunci="' + kunci + '" style="min-height:110px">' +
+        esc((ambilJalur(P, jalur) || []).map(function (x) { return kunci.split(',').map(function (k) { return x[k] || ''; }).join(' | '); }).join('\n')) + '</textarea>';
+    };
+    var cek = function (jalur, label) { return '<label class="cek" style="margin:6px 0"><input type="checkbox" data-s-bool="' + jalur + '"' + (ambilJalur(P, jalur) ? ' checked' : '') + '> <span>' + label + '</span></label>'; };
+    var urlHalaman = A.halaman('sponsor.html');
+    var h = '<div class="card"><h2>Halaman sponsor</h2>';
+    h += cek('aktif', '<b>Tampilkan halaman sponsor dan formulir minat</b>. Jika dimatikan, bilah bawah dan bagian kemitraan di landing page ikut hilang (logo sponsor tetap tampil).');
+    h += '<p class="hint">Alamat halaman: <a href="' + esc(urlHalaman) + '" target="_blank" rel="noopener">' + esc(urlHalaman) + '</a></p>';
+    h += teks('notif_email', 'Email penerima notifikasi', 'Setiap ada calon sponsor baru, email berisi datanya dikirim ke sini. Pisahkan dengan koma untuk lebih dari satu alamat.' +
+      (S.sp.atur.kuota_email !== null && S.sp.atur.kuota_email !== undefined ? ' Sisa kuota email hari ini: <b>' + S.sp.atur.kuota_email + '</b>.' : ''));
+    h += '</div>';
+
+    h += '<div class="card"><h2>1. Ajakan di landing page</h2><div class="grid2"><div>' +
+      cek('bilah.aktif', '<b>Bilah yang menempel di bawah layar</b>') + teks('bilah.teks', 'Teks bilah') + teks('bilah.tombol', 'Teks tombol bilah') +
+      '<div class="hint">Muncul setelah pengunjung menggeser melewati bagian pembuka, dan bisa ditutup pengunjung.</div></div><div>' +
+      cek('bagian.aktif', '<b>Bagian "Peluang kemitraan"</b> sebelum penutup') + teks('bagian.judul', 'Judul') + teks('bagian.isi', 'Isi', '', true) + teks('bagian.tombol', 'Teks tombol') + '</div></div></div>';
+
+    h += '<div class="card"><h2>2. Pembuka halaman sponsor</h2>' + teks('hero.label', 'Label kecil') + teks('hero.judul', 'Judul besar') + teks('hero.deskripsi', 'Deskripsi', '', true) +
+      pasang('angka', 'angka,label', 'Angka kunci', 'Angka | Keterangan') + '</div>';
+
+    h += '<div class="card"><h2>3. Tujuan, audiens & promosi</h2>' + teks('tujuan.judul', 'Judul tujuan') + teks('tujuan.isi', 'Isi tujuan', '', true) +
+      '<div class="grid2"><div>' + teks('audiens.judul', 'Judul audiens') + pasang('audiens.poin', 'judul,isi', 'Poin audiens', 'Judul | Isi') + '</div>' +
+      '<div>' + teks('promosi.judul', 'Judul promosi') + pasang('promosi.poin', 'judul,isi', 'Jalur promosi', 'Kanal | Isi') + '</div></div></div>';
+
+    h += '<div class="card"><h2>4. Paket kemitraan</h2><p class="hint">Paket <b>utama</b> tampil sebagai kartu besar (paket pertama berwarna hijau), paket <b>lain</b> sebagai kartu kecil di bawahnya. Paket berstatus <b>penuh</b> tampil abu-abu dan tidak bisa dipilih di formulir.</p><div id="spPaket"></div>' +
+      '<button class="btn sekunder kecil" type="button" id="spTambahPaket" style="margin-top:10px">+ Tambah paket</button></div>';
+
+    h += '<div class="card"><h2>5. Penempatan brand & linimasa</h2>' + teks('penempatan.judul', 'Judul') + teks('penempatan.deskripsi', 'Deskripsi') +
+      pasang('penempatan.poin', 'judul,isi', 'Titik penempatan', 'Tempat | Paket') +
+      '<div style="margin-top:14px">' + cek('linimasa.aktif', '<b>Tampilkan linimasa kemitraan</b>') + '</div>' + teks('linimasa.judul', 'Judul linimasa') +
+      pasang('linimasa.poin', 'tanggal,isi', 'Tanggal penting', 'Tanggal | Keterangan') + '</div>';
+
+    h += '<div class="card"><h2>6. Proposal, formulir & kontak</h2><div class="grid2"><div>' +
+      teks('proposal.file', 'File proposal (PDF)', 'File ada di <code>assets/proposal-sponsor.pdf</code>. Untuk mengganti, unggah PDF baru ke GitHub dengan nama yang sama. Kosongkan untuk menyembunyikan tombol unduh.') +
+      teks('proposal.tombol', 'Teks tombol unduh') + '</div><div>' + teks('form.judul', 'Judul formulir') + teks('form.deskripsi', 'Keterangan formulir', '', true) + '</div></div>' +
+      teks('form.sukses', 'Pesan setelah formulir terkirim', '', true) +
+      '<div class="grid2"><div>' + teks('pic.judul', 'Judul kontak') + pasang('pic.kontak', 'nama,wa', 'PIC sponsor', 'Nama | Nomor WA') + '</div><div>' +
+      teks('pic.email', 'Email kemitraan (ditampilkan)') + teks('pic.pesan_wa', 'Pesan pembuka WhatsApp', 'Bisa memakai <code>{nama_kontak}</code> dan <code>{nama_acara}</code>.', true) + '</div></div></div>';
+
+    h += '<div class="card"><h2>7. Logo sponsor</h2><p class="hint">Tambahkan logo setelah sponsor deal. Logo tampil di bagian <b>Didukung oleh</b> landing page (Platinum paling besar, lalu Gold, lalu sisanya), dan di <b>e-tiket peserta</b> bila dicentang (proposal: Tiket QR untuk Platinum).</p>' +
+      '<div class="grid2"><div>' + cek('logo.di_landing', 'Tampilkan logo di landing page') + teks('logo.judul', 'Judul bagian logo') + '</div><div>' + teks('logo.judul_tiket', 'Judul logo di e-tiket') + '</div></div>' +
+      '<div id="spLogo" style="margin-top:12px"></div><button class="btn sekunder kecil" type="button" id="spTambahLogo" style="margin-top:10px">+ Tambah logo sponsor</button></div>';
+
+    h += '<div class="card" style="position:sticky;bottom:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
+      '<button class="btn" id="spSimpan">Simpan pengaturan sponsor</button><button class="btn sekunder" id="spPratinjau">Pratinjau halaman</button><span class="hint" id="spPesan"></span></div>';
+    $('#spAtur').innerHTML = h;
+    renderPaketSp(P.paket || []);
+    renderLogoSp(P.logo.daftar || []);
+    $('#spTambahPaket').addEventListener('click', function () {
+      var p = kumpulkanPaketSp(); p.push({ kode: '', nama: '', harga: '', slot: '', kelompok: 'utama', status: 'tersedia', penanda: '', manfaat: [] }); renderPaketSp(p);
+    });
+    $('#spTambahLogo').addEventListener('click', function () {
+      var l = kumpulkanLogoSp(); l.push({ nama: '', file: '', tingkat: 'gold', tautan: '', di_tiket: false }); renderLogoSp(l);
+    });
+    $('#spSimpan').addEventListener('click', simpanAturSponsor);
+    $('#spPratinjau').addEventListener('click', function () {
+      A.simpan('ws_pratinjau_sponsor', kumpulkanAturSponsor());
+      window.open('sponsor.html?pratinjau=1', '_blank');
+    });
+  }
+
+  function renderPaketSp(list) {
+    var pilih = function (kelas, nilai, opsi) {
+      return '<select class="' + kelas + '">' + opsi.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === nilai ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+    };
+    $('#spPaket').innerHTML = list.map(function (p, i) {
+      return '<div class="jt-kartu sp-paket-edit' + (p.status === 'penuh' ? ' jt-abu' : '') + '" data-kode="' + esc(p.kode || '') + '"><div class="jt-grid">' +
+        '<div><label>Nama paket</label><input type="text" class="pNama" value="' + esc(p.nama) + '"></div>' +
+        '<div><label>Harga (teks)</label><input type="text" class="pHarga" value="' + esc(p.harga) + '" placeholder="Rp25 jt"></div>' +
+        '<div><label>Slot</label><input type="text" class="pSlot" value="' + esc(p.slot) + '" placeholder="2–3 slot"></div>' +
+        '<div><label>Penanda</label><input type="text" class="pPenanda" value="' + esc(p.penanda) + '" placeholder="Sisa 1 slot"></div>' +
+        '<div><label>Tampil sebagai</label>' + pilih('pKelompok', p.kelompok, [['utama', 'Kartu utama'], ['lain', 'Kartu kecil (lain)']]) + '</div>' +
+        '<div><label>Status</label>' + pilih('pStatus', p.status, [['tersedia', 'Tersedia'], ['penuh', 'Penuh']]) + '</div>' +
+        '<div class="jt-lebar"><label>Manfaat <span class="opsional">(satu per baris)</span></label><textarea class="pManfaat" style="min-height:90px">' + esc((p.manfaat || []).join('\n')) + '</textarea></div>' +
+        '</div><div class="btn-grup" style="margin-top:8px">' + (i > 0 ? '<button class="btn sekunder kecil pNaik" type="button" data-i="' + i + '">↑ Naikkan</button>' : '') +
+        '<button class="btn sekunder kecil pHapus" type="button" data-i="' + i + '">Hapus paket</button></div></div>';
+    }).join('') || '<p class="muted">Belum ada paket.</p>';
+    $$('#spPaket .pHapus').forEach(function (b) { b.addEventListener('click', function () { var p = kumpulkanPaketSp(); p.splice(+b.getAttribute('data-i'), 1); renderPaketSp(p); }); });
+    $$('#spPaket .pNaik').forEach(function (b) {
+      b.addEventListener('click', function () { var p = kumpulkanPaketSp(), i = +b.getAttribute('data-i'); var x = p[i]; p[i] = p[i - 1]; p[i - 1] = x; renderPaketSp(p); });
+    });
+  }
+  function kumpulkanPaketSp() {
+    return $$('#spPaket .sp-paket-edit').map(function (k) {
+      var v = function (c) { return k.querySelector(c).value.trim(); };
+      return { kode: k.getAttribute('data-kode') || '', nama: v('.pNama'), harga: v('.pHarga'), slot: v('.pSlot'), penanda: v('.pPenanda'), kelompok: v('.pKelompok'), status: v('.pStatus'),
+        manfaat: v('.pManfaat').split('\n').map(function (x) { return x.trim(); }).filter(Boolean) };
+    });
+  }
+
+  function renderLogoSp(list) {
+    $('#spLogo').innerHTML = list.map(function (l, i) {
+      return '<div class="faq-baris sp-logo-baris"><div class="sp-logo-grid">' +
+        '<div class="logo-pratinjau tanpa-latar sp-logo-pratinjau"><img class="lGambar" src="' + esc(l.file) + '" alt=""' + (l.file ? '' : ' hidden') + '></div>' +
+        '<div><label>Nama sponsor</label><input type="text" class="lNama" value="' + esc(l.nama) + '">' +
+        '<label>Tingkat</label><select class="lTingkat">' + TINGKAT.map(function (t) { return '<option value="' + t[0] + '"' + (l.tingkat === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select>' +
+        '<label class="cek" style="margin-top:10px"><input type="checkbox" class="lTiket"' + (l.di_tiket ? ' checked' : '') + '> <span>Tampil di e-tiket peserta</span></label></div>' +
+        '<div><label>File logo</label><input type="text" class="lFile" value="' + esc(l.file) + '" placeholder="https://… atau assets/sponsor/nama.png">' +
+        '<input type="file" class="lUnggah" accept="image/png,image/jpeg,image/webp" style="margin-top:8px"><div class="hint lStatus">Pilih gambar untuk diunggah ke Google Drive (PNG transparan paling bagus).</div>' +
+        '<label>Tautan saat logo diklik <span class="opsional">(opsional)</span></label><input type="text" class="lTautan" value="' + esc(l.tautan) + '" placeholder="https://situs-sponsor.com"></div>' +
+        '</div><div class="btn-grup" style="margin-top:8px"><button class="btn sekunder kecil lHapus" type="button" data-i="' + i + '">Hapus logo</button></div></div>';
+    }).join('') || '<p class="muted">Belum ada logo sponsor.</p>';
+    $$('#spLogo .sp-logo-baris').forEach(function (b, i) {
+      var file = b.querySelector('.lFile'), img = b.querySelector('.lGambar');
+      var segar = function () { img.src = file.value.trim(); img.hidden = !file.value.trim(); };
+      file.addEventListener('change', segar);
+      b.querySelector('.lTingkat').addEventListener('change', function () { if (this.value === 'platinum') b.querySelector('.lTiket').checked = true; });
+      b.querySelector('.lHapus').addEventListener('click', function () { var l = kumpulkanLogoSp(); l.splice(i, 1); renderLogoSp(l); });
+      b.querySelector('.lUnggah').addEventListener('change', function () {
+        var f = this.files[0], status = b.querySelector('.lStatus'), input = this;
+        if (!f) return;
+        status.textContent = 'Mengunggah…'; input.disabled = true;
+        siapkanLogo(f).then(function (x) {
+          return apiA('unggahLogoSponsor', { mime: x.mime, data: x.data, nama: b.querySelector('.lNama').value || f.name.replace(/\.\w+$/, '') });
+        }).then(function (r) {
+          file.value = r.url; segar();
+          status.innerHTML = '<span style="color:var(--ok)">Terunggah. Jangan lupa klik Simpan pengaturan sponsor.</span>';
+        }).catch(function (e) {
+          status.innerHTML = '<span style="color:var(--danger)">' + esc(e.message) + '</span>';
+        }).then(function () { input.disabled = false; input.value = ''; });
+      });
+    });
+  }
+  function kumpulkanLogoSp() {
+    return $$('#spLogo .sp-logo-baris').map(function (b) {
+      return { nama: b.querySelector('.lNama').value.trim(), file: b.querySelector('.lFile').value.trim(), tingkat: b.querySelector('.lTingkat').value,
+        tautan: b.querySelector('.lTautan').value.trim(), di_tiket: b.querySelector('.lTiket').checked };
+    });
+  }
+
+  /** Logo diperkecil (maks. lebar 1000 px) tanpa menghilangkan latar transparan */
+  function siapkanLogo(file) {
+    return new Promise(function (resolve, reject) {
+      if (['image/png', 'image/jpeg', 'image/webp'].indexOf(file.type) < 0) return reject(new Error('Format logo harus PNG, JPG, atau WEBP.'));
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var bacaAsli = function () {
+          var fr = new FileReader();
+          fr.onload = function () { resolve({ mime: file.type, data: String(fr.result).split(',')[1] }); };
+          fr.onerror = function () { reject(new Error('File tidak terbaca.')); };
+          fr.readAsDataURL(file);
+        };
+        if (img.naturalWidth <= 1000 && file.size <= 1.4 * 1024 * 1024) return bacaAsli();
+        var skala = Math.min(1, 1000 / img.naturalWidth), c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * skala); c.height = Math.round(img.naturalHeight * skala);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        var data = c.toDataURL('image/png');
+        if (data.length * 0.75 > 1.4 * 1024 * 1024) data = c.toDataURL('image/webp', 0.9);
+        resolve({ mime: data.slice(5, data.indexOf(';')), data: data.split(',')[1] });
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Gambar tidak terbaca.')); };
+      img.src = url;
+    });
+  }
+
+  function kumpulkanAturSponsor() {
+    var P = JSON.parse(JSON.stringify(S.sp.atur.sponsor));
+    $$('#spAtur [data-s]').forEach(function (el) { setelJalur(P, el.getAttribute('data-s'), el.value.trim()); });
+    $$('#spAtur [data-s-pasang]').forEach(function (el) {
+      var kunci = el.getAttribute('data-kunci').split(',');
+      setelJalur(P, el.getAttribute('data-s-pasang'), el.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean).map(function (x) {
+        var bag = x.split('|'), o = {};
+        kunci.forEach(function (k, i) { o[k] = i === kunci.length - 1 ? bag.slice(i).join('|').trim() : (bag[i] || '').trim(); });
+        return o;
+      }));
+    });
+    $$('#spAtur [data-s-bool]').forEach(function (el) { setelJalur(P, el.getAttribute('data-s-bool'), el.checked); });
+    P.paket = kumpulkanPaketSp().filter(function (p) { return p.nama; });
+    P.logo.daftar = kumpulkanLogoSp().filter(function (l) { return l.file; });
+    return P;
+  }
+
+  function simpanAturSponsor() {
+    var btn = $('#spSimpan'); btn.disabled = true; btn.textContent = 'Menyimpan…';
+    apiA('simpanSponsor', { sponsor: kumpulkanAturSponsor() }).then(function (r) {
+      A.toast(r.pesan); muatAturSponsor();
+    }).catch(function (e) {
+      A.toast(e.message, true);
+      $('#spPesan').innerHTML = '<span style="color:var(--danger)">' + esc(e.message) + '</span>';
+      btn.disabled = false; btn.textContent = 'Simpan pengaturan sponsor';
     });
   }
 

@@ -1,5 +1,5 @@
 /* Landing page — dirender dari data `publik` (isi teks diatur di dashboard, tab Landing Page) */
-window.LANDING_VERSI = '2026.11.27';
+window.LANDING_VERSI = '2026.11.28';
 (function () {
   'use strict';
   var A = window.App;
@@ -8,6 +8,8 @@ window.LANDING_VERSI = '2026.11.27';
     tanggal: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>',
     lokasi: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>',
     jam: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>',
+    mitra: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l2 2a1 1 0 0 0 3-3"></path><path d="M14 14l2.5 2.5a1 1 0 0 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"></path><path d="M21 3l1 11h-2"></path><path d="M3 3L2 14l6.5 6.5a1 1 0 1 0 3-3"></path><path d="M3 4h8"></path></svg>',
+    tutup: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>',
     wa: '<svg width="26" height="26" viewBox="0 0 24 24" fill="#1F9D55" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"></path></svg>'
   };
 
@@ -130,12 +132,26 @@ window.LANDING_VERSI = '2026.11.27';
       h += '</div></section>';
     }
 
+    // ---------- Didukung oleh (logo sponsor) ----------
+    var sp = info.sponsor || null;
+    h += logoSponsor(sp);
+
     // ---------- FAQ ----------
     var faq = (L.faq || []).filter(function (q) { return ada(q.t); });
     if (faq.length) {
       h += '<section class="lp-putih lp-sesi"><div class="lp-isi lp-faq">';
       h += '<h2 class="lp-tengah-teks">Pertanyaan yang sering muncul</h2>';
       h += faq.map(function (q) { return '<details><summary>' + t(q.t) + '</summary><p>' + t(q.j) + '</p></details>'; }).join('');
+      h += '</div></section>';
+    }
+
+    // ---------- Peluang kemitraan ----------
+    if (sp && sp.halaman && sp.bagian) {
+      h += '<section class="lp-mitra" id="kemitraan"><div class="lp-isi lp-mitra-isi">';
+      h += '<div class="lp-mitra-ikon">' + IKON.mitra + '</div><div class="lp-mitra-teks">';
+      if (ada(sp.bagian.judul)) h += '<h2>' + t(sp.bagian.judul) + '</h2>';
+      if (ada(sp.bagian.isi)) h += '<p>' + t(sp.bagian.isi) + '</p>';
+      h += '</div><a class="lp-btn lp-btn-hijau lp-btn-besar" href="sponsor.html">' + t(sp.bagian.tombol || 'Lihat paket sponsor') + '</a>';
       h += '</div></section>';
     }
 
@@ -153,10 +169,74 @@ window.LANDING_VERSI = '2026.11.27';
     }
     h += '</div></section>';
     var logoFooter = logo('footer');
-    if (ada(L.footer) || logoFooter) h += '<footer class="lp-footer">' + (logoFooter ? '<div>' + logoFooter + '</div>' : '') + t(L.footer) + '</footer>';
+    var linkMitra = sp && sp.halaman ? '<div class="lp-footer-link"><a href="sponsor.html">Peluang menjadi sponsor</a></div>' : '';
+    if (ada(L.footer) || logoFooter || linkMitra) h += '<footer class="lp-footer">' + (logoFooter ? '<div>' + logoFooter + '</div>' : '') + t(L.footer) + linkMitra + '</footer>';
+
+    // ---------- Bilah sponsor yang menempel di bawah layar ----------
+    if (sp && sp.halaman && sp.bilah && !tutupBilah()) {
+      h += '<div class="lp-bilah" id="lpBilah" role="region" aria-label="Info sponsor"><div class="lp-bilah-isi">';
+      h += '<span class="lp-bilah-ikon">' + IKON.mitra + '</span><span class="lp-bilah-teks">' + t(sp.bilah.teks) + '</span>';
+      h += '<a class="lp-bilah-tombol" href="sponsor.html">' + t(sp.bilah.tombol || 'Lihat paket') + ' →</a>';
+      h += '<button type="button" class="lp-bilah-tutup" aria-label="Tutup info sponsor">' + IKON.tutup + '</button>';
+      h += '</div></div>';
+    }
 
     el.innerHTML = h;
+    pasangBilah(el);
     document.title = a.nama_acara || 'Pendaftaran';
+  }
+
+  var KUNCI_BILAH = 'ws_bilah_sponsor_tutup';
+  function tutupBilah() { try { return !!localStorage.getItem(KUNCI_BILAH); } catch (e) { return false; } }
+
+  /** Logo sponsor per tingkat: Platinum paling besar, lalu Gold, lalu sisanya */
+  function logoSponsor(sp) {
+    if (!sp || !sp.logo || !(sp.logo.daftar || []).length) return '';
+    var kelompok = { besar: [], sedang: [], kecil: [] };
+    sp.logo.daftar.forEach(function (x) {
+      (x.tingkat === 'platinum' ? kelompok.besar : x.tingkat === 'gold' ? kelompok.sedang : kelompok.kecil).push(x);
+    });
+    var h = '<section class="lp-putih lp-sesi lp-dukung"><div class="lp-isi lp-tumpuk lp-tengah-teks">';
+    if (ada(sp.logo.judul)) h += '<p class="lp-sublabel lp-merah">' + esc(String(sp.logo.judul).toUpperCase()) + '</p>';
+    ['besar', 'sedang', 'kecil'].forEach(function (uk) {
+      if (!kelompok[uk].length) return;
+      h += '<div class="lp-dukung-baris lp-dukung-' + uk + '">' + kelompok[uk].map(function (x) {
+        var img = '<img src="' + esc(x.file) + '" alt="' + esc(x.nama || 'Logo sponsor') + '" onerror="this.parentNode.style.display=\'none\'">';
+        return x.tautan ? '<a class="lp-dukung-logo" href="' + esc(x.tautan) + '" target="_blank" rel="noopener sponsored">' + img + '</a>'
+          : '<span class="lp-dukung-logo">' + img + '</span>';
+      }).join('') + '</div>';
+    });
+    return h + '</div></section>';
+  }
+
+  /** Bilah muncul setelah melewati bagian atas, dan menyingkir saat bagian kemitraan / penutup terlihat */
+  var bilahTerpasang = false;
+  function pasangBilah(el) {
+    var bar = el.querySelector('#lpBilah');
+    if (!bar) return;
+    bar.querySelector('.lp-bilah-tutup').addEventListener('click', function () {
+      try { localStorage.setItem(KUNCI_BILAH, String(Date.now())); } catch (e) { }
+      bar.remove();
+    });
+    perbaruiBilah();
+    if (bilahTerpasang) return;
+    bilahTerpasang = true;
+    var jadwal = false;
+    var cek = function () { if (jadwal) return; jadwal = true; requestAnimationFrame(function () { jadwal = false; perbaruiBilah(); }); };
+    window.addEventListener('scroll', cek, { passive: true });
+    window.addEventListener('resize', cek);
+  }
+  function perbaruiBilah() {
+    var bar = document.getElementById('lpBilah');
+    if (!bar) return;
+    var hero = document.querySelector('.lp-hero');
+    var lewatHero = hero ? hero.getBoundingClientRect().bottom < 0 : window.scrollY > 400;
+    var tinggi = window.innerHeight;
+    var bertabrakan = Array.prototype.some.call(document.querySelectorAll('#kemitraan, .lp-penutup, .lp-footer'), function (s) {
+      var r = s.getBoundingClientRect(); return r.top < tinggi && r.bottom > 0;
+    });
+    var tampil = lewatHero && !bertabrakan;
+    if (bar.classList.contains('lp-bilah-tampil') !== tampil) bar.classList.toggle('lp-bilah-tampil', tampil);
   }
 
   function formatNomor(n) {
@@ -204,5 +284,5 @@ window.LANDING_VERSI = '2026.11.27';
     return '<span class="lp-btn lp-btn-mati">' + esc(teks) + '</span>';
   }
 
-  window.Landing = { render: render };
+  window.Landing = { render: render, logoSponsor: logoSponsor, IKON: IKON, formatNomor: formatNomor };
 })();

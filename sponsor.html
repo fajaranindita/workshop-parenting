@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peluang Kemitraan</title>
+  <link rel="preload" href="fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="bannerPratinjau" class="pratinjau-banner" hidden>MODE PRATINJAU — formulir tidak akan dikirim</div>
+  <div id="halaman" class="lp"><div class="wrap"><div id="memuat"></div></div></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script src="landing.js"></script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.28'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}if(window.LANDING_VERSI!=='2026.11.28'){tampil('Halaman belum bisa dipakai: landing.js tidak ditemukan atau berbeda versi. Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}})();</script>
+  <script>
+  (function () {
+    var A = App, el = A.$('#halaman');
+    var pratinjau = A.param('pratinjau') === '1';
+    var KUNCI_CACHE = 'ws_publik_cache';
+    var info = null, terkirim = false, formDisentuh = false;
+    A.$('#memuat').innerHTML = A.memuat('Memuat info kemitraan…');
+
+    /** Draf dari dashboard (bentuk lengkap) → bentuk publik, untuk pratinjau */
+    function dariDraf(S) {
+      var tingkat = ['platinum', 'gold', 'silver', 'bronze', 'lain'];
+      var logo = (S.logo.daftar || []).filter(function (x) { return x.file; })
+        .sort(function (a, b) { return tingkat.indexOf(a.tingkat) - tingkat.indexOf(b.tingkat); });
+      return {
+        halaman: true, bilah: S.bilah.aktif ? S.bilah : null, bagian: S.bagian.aktif ? S.bagian : null,
+        logo: S.logo.di_landing && logo.length ? { judul: S.logo.judul, daftar: logo } : null,
+        detail: {
+          hero: S.hero, angka: S.angka, tujuan: S.tujuan, audiens: S.audiens, promosi: S.promosi,
+          paket: (S.paket || []).filter(function (p) { return p.nama; }).map(function (p) { var o = JSON.parse(JSON.stringify(p)); o.kode = o.kode || o.nama.toLowerCase(); o.bisa = p.status !== 'penuh'; return o; }),
+          penempatan: S.penempatan, linimasa: S.linimasa.aktif ? S.linimasa : null, proposal: S.proposal, form: S.form, pic: S.pic
+        }
+      };
+    }
+
+    var simpanan = pratinjau ? null : A.ambil(KUNCI_CACHE);
+    if (simpanan && simpanan.d && Date.now() - simpanan.t < 86400000) tampilkan(simpanan.d);
+
+    A.api('publik').then(function (d) {
+      if (pratinjau) {
+        var draf = A.ambil('ws_pratinjau_sponsor');
+        if (!draf) throw new Error('Data pratinjau tidak ditemukan. Buka pratinjau dari dashboard, tab Sponsor.');
+        d.sponsor = dariDraf(draf);
+        A.$('#bannerPratinjau').hidden = false;
+      } else {
+        A.simpan(KUNCI_CACHE, { t: Date.now(), d: d });
+      }
+      // Halaman tidak digambar ulang saat formulir sedang diisi atau sudah terkirim
+      if (!info || (!formDisentuh && !terkirim && JSON.stringify(d.sponsor) !== JSON.stringify(info.sponsor))) {
+        var y = window.scrollY; tampilkan(d); if (info) window.scrollTo(0, y);
+      }
+      info = d;
+    }).catch(function (e) {
+      if (!info) el.innerHTML = '<div class="sp-kosong"><div class="banner danger">' + A.esc(e.message) + '</div><a href="index.html">← Kembali ke info acara</a></div>';
+    });
+
+    function tampilkan(d) {
+      info = d; A.setLabelVip(d.acara);
+      var sp = d.sponsor, a = d.acara || {};
+      document.title = 'Peluang Kemitraan · ' + (a.nama_acara || '');
+      if (!sp || !sp.halaman || !sp.detail) {
+        el.innerHTML = '<div class="sp-kosong"><h2>Halaman kemitraan belum dibuka</h2><p class="lp-lead">Terima kasih atas minat Anda. Silakan kembali lagi nanti atau hubungi panitia.</p><a class="lp-btn lp-btn-hijau lp-btn-kecil" href="index.html">← Kembali ke info acara</a></div>';
+        return;
+      }
+      var D = sp.detail, L = d.landing || null, I = window.Landing.IKON;
+      var esc = A.esc, ada = function (s) { return s && String(s).trim(); };
+      var token = function (s, nama) { return String(s || '').replace(/\{nama_acara\}/g, a.nama_acara || '').replace(/\{nama_kontak\}/g, nama || 'Panitia'); };
+      var linkWA = function (k) { var p = token(D.pic.pesan_wa, k.nama).trim(); return 'https://wa.me/' + String(k.wa).replace(/\D/g, '') + (p ? '?text=' + encodeURIComponent(p) : ''); };
+      var unduh = '<svg class="sp-unduh-ikon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>';
+      var tombolProposal = function (kelas) {
+        return ada(D.proposal.file) ? '<a class="lp-btn ' + kelas + '" href="' + esc(D.proposal.file) + '" target="_blank" rel="noopener" download>' + unduh + esc(D.proposal.tombol || 'Unduh proposal (PDF)') + '</a>' : '';
+      };
+      var h = '';
+
+      // ---------- Header ----------
+      h += '<header class="lp-header"><div class="lp-isi lp-baris"><a class="lp-merek" href="index.html" style="text-decoration:none">';
+      var g = L && L.logo;
+      if (g && g.aktif && g.file) h += '<span class="lp-logo lp-logo-header' + (g.latar === 'tanpa' ? '' : ' lp-logo-putih') + '"><img src="' + esc(g.file) + '" alt="Logo"></span>';
+      if (L && ada(L.header.organisasi)) h += '<span class="lp-org">' + esc(L.header.organisasi) + '</span>';
+      else if (!(g && g.aktif)) h += '<span class="lp-org">' + esc(a.nama_acara || '') + '</span>';
+      var adaKiri = (g && g.aktif && g.file) || (L && ada(L.header.organisasi)) || !(g && g.aktif);
+      var garis = adaKiri ? '<span class="lp-garis"></span>' : '';
+      if (L && ada(L.header.label_logo)) h += garis + '<img class="lp-label-logo" src="' + esc(L.header.label_logo) + '" alt="' + esc(L.header.label || 'Logo') + '">';
+      else if (L && ada(L.header.label)) h += garis + '<span class="lp-label">' + esc(L.header.label) + '</span>';
+      h += '</a><a class="lp-btn lp-btn-emas lp-btn-kecil" href="#form-mitra">Ajukan minat</a></div></header>';
+
+      // ---------- Hero ----------
+      h += '<section class="sp-hero"><div class="lp-isi lp-tumpuk">';
+      if (ada(D.hero.label)) h += '<p class="lp-sublabel lp-emas">' + esc(D.hero.label) + '</p>';
+      h += '<h1>' + esc(D.hero.judul || 'Peluang kemitraan') + '</h1>';
+      if (ada(D.hero.deskripsi)) h += '<p class="lp-lead">' + esc(D.hero.deskripsi) + '</p>';
+      h += '<div class="sp-tombol"><a class="lp-btn lp-btn-emas lp-btn-besar" href="#paket">Lihat paket</a>' + tombolProposal('lp-btn-garis lp-btn-besar') + '</div>';
+      var angka = (D.angka || []).filter(function (x) { return ada(x.angka); });
+      if (angka.length) h += '<div class="sp-angka">' + angka.map(function (x) { return '<div class="lp-stat"><div class="lp-stat-angka">' + esc(x.angka) + '</div><div class="lp-stat-label">' + esc(x.label) + '</div></div>'; }).join('') + '</div>';
+      h += '</div></section>';
+
+      // ---------- Tujuan, audiens, promosi ----------
+      var poin = function (list) {
+        return '<div class="sp-daftar-poin">' + (list || []).filter(function (p) { return ada(p.judul); }).map(function (p) { return '<div><b>' + esc(p.judul) + '</b>' + (ada(p.isi) ? '<span>' + esc(p.isi) + '</span>' : '') + '</div>'; }).join('') + '</div>';
+      };
+      var kotak = [];
+      if (ada(D.tujuan.judul) || ada(D.tujuan.isi)) kotak.push('<div class="sp-kotak"><h3>' + esc(D.tujuan.judul) + '</h3><p class="sp-isi-teks">' + esc(D.tujuan.isi) + '</p></div>');
+      if ((D.audiens.poin || []).length) kotak.push('<div class="sp-kotak"><h3>' + esc(D.audiens.judul) + '</h3>' + poin(D.audiens.poin) + '</div>');
+      if ((D.promosi.poin || []).length) kotak.push('<div class="sp-kotak"><h3>' + esc(D.promosi.judul) + '</h3>' + poin(D.promosi.poin) + '</div>');
+      if (kotak.length) h += '<section class="lp-krem lp-sesi"><div class="lp-isi sp-dua">' + kotak.join('') + '</div></section>';
+
+      // ---------- Paket ----------
+      var paket = D.paket || [];
+      var utama = paket.filter(function (p) { return p.kelompok !== 'lain'; }), lain = paket.filter(function (p) { return p.kelompok === 'lain'; });
+      h += '<section class="lp-putih lp-sesi" id="paket"><div class="lp-isi lp-tumpuk lp-celah-besar">';
+      h += '<div class="lp-tengah-teks"><p class="lp-sublabel lp-merah">PAKET KEMITRAAN</p><h2 style="margin-top:8px">Pilih bentuk dukungan Anda</h2></div>';
+      var tombolPilih = function (p, kelas) {
+        return p.bisa ? '<a class="lp-btn ' + kelas + '" href="#form-mitra" data-paket="' + esc(p.kode) + '">Pilih ' + esc(p.nama) + '</a>' : '<span class="lp-btn lp-btn-mati">Slot penuh</span>';
+      };
+      if (utama.length) {
+        h += '<div class="sp-grid-paket">' + utama.map(function (p, i) {
+          var pertama = i === 0 && p.bisa;
+          var h2 = '<div class="sp-paket' + (pertama ? ' sp-paket-utama' : '') + (p.bisa ? '' : ' sp-paket-penuh') + '">';
+          h2 += '<div class="sp-paket-atas"><span class="sp-paket-nama">' + esc(p.nama) + '</span>' + (!p.bisa ? '<span class="sp-pil-merah">Penuh</span>' : ada(p.penanda) ? '<span class="lp-pil-emas">' + esc(p.penanda) + '</span>' : '') + '</div>';
+          h2 += '<div class="sp-paket-harga">' + esc(p.harga) + '</div>';
+          if (ada(p.slot)) h2 += '<div class="sp-paket-slot">' + esc(p.slot) + '</div>';
+          if ((p.manfaat || []).length) h2 += '<ul>' + p.manfaat.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul>';
+          return h2 + tombolPilih(p, pertama ? 'lp-btn-emas' : 'lp-btn-hijau') + '</div>';
+        }).join('') + '</div>';
+      }
+      if (lain.length) {
+        h += '<div class="sp-grid-lain">' + lain.map(function (p) {
+          return '<div class="sp-lain' + (p.bisa ? '' : ' sp-paket-penuh') + '"><div class="sp-lain-teks"><b>' + esc(p.nama) + (!p.bisa ? ' · Penuh' : ada(p.penanda) ? ' · ' + esc(p.penanda) : '') + '</b>' +
+            ((p.manfaat || []).length ? '<span>' + p.manfaat.map(esc).join(' · ') + '</span>' : '') + '</div>' +
+            '<span class="sp-lain-harga">' + esc(p.harga) + (ada(p.slot) ? ' <small style="font-weight:600;color:var(--lp-teks2)">' + esc(p.slot) + '</small>' : '') + '</span>' + tombolPilih(p, 'lp-btn-hijau') + '</div>';
+        }).join('') + '</div>';
+      }
+      h += '</div></section>';
+
+      // ---------- Penempatan brand ----------
+      var tempat = (D.penempatan.poin || []).filter(function (p) { return ada(p.judul); });
+      if (tempat.length) {
+        h += '<section class="lp-putih lp-sesi" style="padding-top:0"><div class="lp-isi lp-tumpuk">';
+        h += '<div class="lp-tengah-teks"><h2>' + esc(D.penempatan.judul) + '</h2>' + (ada(D.penempatan.deskripsi) ? '<p class="lp-lead">' + esc(D.penempatan.deskripsi) + '</p>' : '') + '</div>';
+        h += '<div class="sp-grid-tempat">' + tempat.map(function (p) { return '<div class="sp-tempat"><b>' + esc(p.judul) + '</b><span>' + esc(p.isi) + '</span></div>'; }).join('') + '</div>';
+        h += '</div></section>';
+      }
+
+      // ---------- Linimasa (bila diaktifkan) ----------
+      if (D.linimasa && (D.linimasa.poin || []).length) {
+        h += '<section class="lp-krem lp-sesi"><div class="lp-isi lp-tumpuk lp-tengah-teks"><h2>' + esc(D.linimasa.judul) + '</h2><div class="sp-linimasa">' +
+          D.linimasa.poin.map(function (p) { return '<div><b>' + esc(p.tanggal) + '</b>' + esc(p.isi) + '</div>'; }).join('') + '</div></div></section>';
+      }
+
+      // ---------- Formulir + kontak ----------
+      var kontak = (D.pic.kontak || []).filter(function (k) { return k.wa; });
+      h += '<section class="lp-hijau lp-sesi" id="form-mitra"><div class="lp-isi sp-form-wrap">';
+      h += '<div class="sp-form" id="kotakForm">' + formHTML(D, paket) + '</div>';
+      h += '<div class="sp-samping">';
+      if (ada(D.proposal.file)) h += '<div><h3>Proposal lengkap</h3><p>Rincian acara, audiens, anggaran, dan paket kemitraan.</p><div style="margin-top:12px">' + tombolProposal('lp-btn-emas lp-btn-kecil') + '</div></div>';
+      if (kontak.length || ada(D.pic.email)) {
+        h += '<div><h3>' + esc(D.pic.judul || 'Kontak kemitraan') + '</h3><p>Ingin bertanya dulu? Hubungi kami langsung.</p></div>';
+        if (kontak.length) h += '<div class="lp-kontak">' + kontak.map(function (k) {
+          return '<a class="lp-kontak-kartu" target="_blank" rel="noopener" href="' + esc(linkWA(k)) + '">' + I.wa + '<span><b>' + esc(k.nama) + '</b><small>+' + esc(window.Landing.formatNomor(k.wa)) + '</small></span></a>';
+        }).join('') + '</div>';
+        if (ada(D.pic.email)) h += '<p>Email: <a class="sp-email" href="mailto:' + esc(D.pic.email) + '">' + esc(D.pic.email) + '</a></p>';
+      }
+      h += '</div></div></section>';
+
+      h += window.Landing.logoSponsor(sp);
+      h += '<footer class="lp-footer">' + (L && ada(L.footer) ? esc(L.footer) : esc(a.nama_acara || '')) + '<div class="lp-footer-link"><a href="index.html">← Kembali ke info acara</a></div></footer>';
+      el.innerHTML = h;
+      pasangForm(D, kontak, linkWA);
+      if (location.hash && location.hash.length > 1) { var t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }
+    }
+
+    function formHTML(D, paket) {
+      var esc = A.esc;
+      var h = '<form id="formMitra" novalidate><h2>' + esc(D.form.judul || 'Tertarik bermitra?') + '</h2>';
+      if (D.form.deskripsi) h += '<p class="hint">' + esc(D.form.deskripsi) + '</p>';
+      h += '<label>Paket yang diminati</label><div class="sp-pilih-paket">';
+      paket.forEach(function (p) {
+        h += '<label><input type="radio" name="paket" value="' + esc(p.kode) + '"' + (p.bisa ? '' : ' disabled') + '> ' + esc(p.nama) + (p.bisa ? '' : ' (penuh)') + '</label>';
+      });
+      h += '<label><input type="radio" name="paket" value="konsultasi"> Belum tahu, ingin konsultasi dulu</label></div>';
+      h += '<label for="spNama">Nama Anda</label><input id="spNama" type="text" maxlength="100" autocomplete="name" required>';
+      h += '<label for="spInstansi">Nama instansi / usaha</label><input id="spInstansi" type="text" maxlength="120" autocomplete="organization" required>';
+      h += '<label for="spWA">Nomor WhatsApp</label><input id="spWA" type="tel" inputmode="tel" placeholder="08xxxxxxxxxx" autocomplete="tel" required>';
+      h += '<label for="spEmail">Email <span class="opsional">(opsional)</span></label><input id="spEmail" type="email" autocomplete="email" maxlength="120">';
+      h += '<label for="spPesan">Pesan <span class="opsional">(opsional)</span></label><textarea id="spPesan" maxlength="1000" placeholder="Misalnya: ingin diskusi sponsor in-kind berupa konsumsi"></textarea>';
+      h += '<div class="sp-jebakan" aria-hidden="true"><label for="spSitus">Situs web</label><input id="spSitus" type="text" tabindex="-1" autocomplete="off"></div>';
+      h += '<div id="spError" class="banner danger" hidden style="margin-top:14px"></div>';
+      h += '<button class="btn blok" id="spKirim" type="submit" style="margin-top:16px">Kirim minat kemitraan</button>';
+      h += '<p class="hint" style="text-align:center;margin-top:10px">Data hanya dipakai panitia untuk menghubungi Anda terkait kemitraan.</p></form>';
+      return h;
+    }
+
+    function pasangForm(D, kontak, linkWA) {
+      var form = A.$('#formMitra');
+      form.addEventListener('input', function () { formDisentuh = true; A.$('#spError').hidden = true; });
+      A.$$('[data-paket]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var r = form.querySelector('input[name=paket][value="' + b.getAttribute('data-paket') + '"]');
+          if (r && !r.disabled) { r.checked = true; formDisentuh = true; }
+        });
+      });
+      var awal = A.param('paket');
+      if (awal) { var r0 = form.querySelector('input[name=paket][value="' + awal.replace(/"/g, '') + '"]'); if (r0 && !r0.disabled) r0.checked = true; }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var err = A.$('#spError');
+        var pilih = form.querySelector('input[name=paket]:checked');
+        var data = {
+          paket: pilih ? pilih.value : '', nama: A.$('#spNama').value.trim(), instansi: A.$('#spInstansi').value.trim(),
+          wa: A.$('#spWA').value.trim(), email: A.$('#spEmail').value.trim(), pesan: A.$('#spPesan').value.trim(), situs: A.$('#spSitus').value
+        };
+        var salah = !data.paket ? 'Pilih paket yang diminati.' : data.nama.length < 2 ? 'Isi nama Anda.' : data.instansi.length < 2 ? 'Isi nama instansi atau usaha.'
+          : data.wa.replace(/\D/g, '').length < 9 ? 'Isi nomor WhatsApp yang aktif.' : (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email)) ? 'Alamat email tidak valid.' : '';
+        if (salah) { err.textContent = salah; err.hidden = false; return; }
+        if (pratinjau) { A.toast('Mode pratinjau: formulir valid, tidak dikirim.'); return; }
+        var btn = A.$('#spKirim'); btn.disabled = true; btn.textContent = 'Mengirim…';
+        A.api('daftarSponsor', { data: data }).then(function () {
+          terkirim = true;
+          var h = '<div class="sp-sukses"><div class="sp-sukses-ikon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></div>';
+          h += '<h2>Terima kasih, ' + A.esc(data.nama.split(' ')[0]) + '!</h2><p>' + A.esc(D.form.sukses || 'Data Anda sudah kami terima.') + '</p>';
+          if (kontak.length) h += '<p class="hint">Ingin lebih cepat? Sapa langsung:</p><div class="btn-grup" style="justify-content:center">' + kontak.map(function (k) {
+            return '<a class="btn wa kecil" target="_blank" rel="noopener" href="' + A.esc(linkWA(k)) + '">WhatsApp ' + A.esc(k.nama) + '</a>';
+          }).join('') + '</div>';
+          A.$('#kotakForm').innerHTML = h + '</div>';
+          A.$('#kotakForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }).catch(function (e2) {
+          err.textContent = e2.message; err.hidden = false;
+          btn.disabled = false; btn.textContent = 'Kirim minat kemitraan';
+        });
+      });
+    }
+  })();
+  </script>
+</body>
+</html>
