@@ -1,5 +1,5 @@
 /* Landing page — dirender dari data `publik` (isi teks diatur di dashboard, tab Landing Page) */
-window.LANDING_VERSI = '2026.11.28';
+window.LANDING_VERSI = '2026.11.28.3';
 (function () {
   'use strict';
   var A = window.App;
@@ -151,7 +151,7 @@ window.LANDING_VERSI = '2026.11.28';
       h += '<div class="lp-mitra-ikon">' + IKON.mitra + '</div><div class="lp-mitra-teks">';
       if (ada(sp.bagian.judul)) h += '<h2>' + t(sp.bagian.judul) + '</h2>';
       if (ada(sp.bagian.isi)) h += '<p>' + t(sp.bagian.isi) + '</p>';
-      h += '</div><a class="lp-btn lp-btn-hijau lp-btn-besar" href="sponsor.html">' + t(sp.bagian.tombol || 'Lihat paket sponsor') + '</a>';
+      h += '</div><a class="lp-btn lp-btn-hijau lp-btn-besar" href="sponsorship.html">' + t(sp.bagian.tombol || 'Lihat paket sponsor') + '</a>';
       h += '</div></section>';
     }
 
@@ -169,14 +169,14 @@ window.LANDING_VERSI = '2026.11.28';
     }
     h += '</div></section>';
     var logoFooter = logo('footer');
-    var linkMitra = sp && sp.halaman ? '<div class="lp-footer-link"><a href="sponsor.html">Peluang menjadi sponsor</a></div>' : '';
+    var linkMitra = sp && sp.halaman ? '<div class="lp-footer-link"><a href="sponsorship.html">Peluang menjadi sponsor</a></div>' : '';
     if (ada(L.footer) || logoFooter || linkMitra) h += '<footer class="lp-footer">' + (logoFooter ? '<div>' + logoFooter + '</div>' : '') + t(L.footer) + linkMitra + '</footer>';
 
     // ---------- Bilah sponsor yang menempel di bawah layar ----------
     if (sp && sp.halaman && sp.bilah && !tutupBilah()) {
       h += '<div class="lp-bilah" id="lpBilah" role="region" aria-label="Info sponsor"><div class="lp-bilah-isi">';
       h += '<span class="lp-bilah-ikon">' + IKON.mitra + '</span><span class="lp-bilah-teks">' + t(sp.bilah.teks) + '</span>';
-      h += '<a class="lp-bilah-tombol" href="sponsor.html">' + t(sp.bilah.tombol || 'Lihat paket') + ' →</a>';
+      h += '<a class="lp-bilah-tombol" href="sponsorship.html">' + t(sp.bilah.tombol || 'Lihat paket') + ' →</a>';
       h += '<button type="button" class="lp-bilah-tutup" aria-label="Tutup info sponsor">' + IKON.tutup + '</button>';
       h += '</div></div>';
     }

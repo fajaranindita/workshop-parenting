@@ -20,7 +20,7 @@
   <script src="config.js"></script>
   <script src="app.js"></script>
   <script src="landing.js"></script>
-  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.28'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}if(window.LANDING_VERSI!=='2026.11.28'){tampil('Halaman belum bisa dipakai: landing.js tidak ditemukan atau berbeda versi. Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}})();</script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.28.3'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}if(window.LANDING_VERSI!=='2026.11.28.3'){tampil('Halaman belum bisa dipakai: landing.js tidak ditemukan atau berbeda versi. Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}})();</script>
   <script>
   (function () {
     var A = App, isi = A.$('#isi');
@@ -285,6 +285,17 @@
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
+    /** Nomor sudah punya pendaftaran yang belum selesai: arahkan ke pendaftaran itu, jangan buntu */
+    function bantuanDobel(data) {
+      var el = A.$('#pesanError'), h = '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px">';
+      var terakhir = A.ambil('ws_terakhir');
+      if (terakhir && terakhir.kode && terakhir.akses) h += '<a class="btn kecil" href="' + A.esc(A.halaman('bayar.html', { k: terakhir.kode, a: terakhir.akses })) + '">Buka pendaftaran saya (' + A.esc(terakhir.kode) + ')</a>';
+      h += '<a class="btn sekunder kecil" href="status.html">Cek Status</a>';
+      var kontakWA = info && info.acara && info.acara.kontak_wa;
+      if (kontakWA) h += '<a class="btn wa kecil" target="_blank" rel="noopener" href="' + A.esc(A.linkWA(kontakWA, 'Halo panitia, saya ' + data.nama + ' sudah pernah mendaftar dengan nomor WhatsApp ' + data.wa + ', tetapi kehilangan link pembayarannya. Mohon dikirimkan ulang. Terima kasih.')) + '">Minta link ke panitia via WA</a>';
+      el.insertAdjacentHTML('beforeend', h + '</div><p style="margin:8px 0 0;font-weight:400">Anda tidak perlu mendaftar ulang. Lanjutkan pembayaran di pendaftaran yang sudah ada.</p>');
+    }
+
     function kirim(e) {
       e.preventDefault();
       A.$('#pesanError').hidden = true;
@@ -329,6 +340,7 @@
         location.href = A.halaman('bayar.html', { k: res.kode, a: res.akses, baru: '1' });
       }).catch(function (err) {
         tampilError(err.message);
+        if (err.kode === 'DOBEL') bantuanDobel(data);
         btn.disabled = false; btn.textContent = 'Daftar & Lanjut ke Pembayaran';
         if (err.kode === 'HABIS') A.api('publik').then(function (d) { info = d; });
       });

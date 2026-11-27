@@ -17,6 +17,8 @@
       return Promise.reject(new Error('API_URL belum diisi di config.js'));
     }
     var body = Object.assign({ aksi: aksi }, data || {});
+    // Panitia yang login di dashboard (browser yang sama) tetap bisa uji coba saat mode pemeliharaan
+    if (!body.sesi) { var su = ambil('ws_sesi'); if (su) body.sesi_uji = su; }
     var coba = 0;
     function kirim() {
       coba++;
@@ -32,6 +34,8 @@
         });
     }
     return kirim().then(function (json) {
+      if (aksi === 'publik' && json.ok) aturPemeliharaan(json.pemeliharaan, json.acara);
+      if (!json.ok && json.kode_error === 'PEMELIHARAAN') aturPemeliharaan({ pesan: json.error }, null);
       if (!json.ok) {
         var e = new Error(json.error || 'Terjadi kesalahan.');
         e.kode = json.kode_error;
@@ -39,6 +43,40 @@
       }
       return json;
     });
+  }
+
+  // ---------- Mode pemeliharaan ----------
+  var cekUlangPemeliharaan = null;
+  function aturPemeliharaan(info, acara) {
+    var layar = document.getElementById('layarPemeliharaan');
+    if (!info) { // pemeliharaan selesai
+      if (layar) location.reload();
+      var bu = document.getElementById('bannerUjiPemeliharaan'); if (bu) bu.remove();
+      return;
+    }
+    if (info.uji) {
+      if (!document.getElementById('bannerUjiPemeliharaan')) {
+        var b = document.createElement('div'); b.id = 'bannerUjiPemeliharaan'; b.className = 'banner-uji-pemeliharaan';
+        b.textContent = 'Mode pemeliharaan aktif. Anda bisa melihat dan memakai halaman ini karena sedang login sebagai panitia di browser ini.';
+        document.body.insertBefore(b, document.body.firstChild);
+      }
+      return;
+    }
+    if (!layar) {
+      layar = document.createElement('div'); layar.id = 'layarPemeliharaan'; layar.className = 'layar-pemeliharaan';
+      layar.setAttribute('role', 'alertdialog'); layar.setAttribute('aria-labelledby', 'judulPemeliharaan');
+      layar.innerHTML = '<div class="kartu-pemeliharaan"><div class="ikon-pemeliharaan"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"></path></svg></div>' +
+        '<h1 id="judulPemeliharaan">Sedang ada pembaruan</h1><p id="pesanPemeliharaan"></p>' +
+        '<p class="hint">Halaman ini akan terbuka sendiri setelah pembaruan selesai.</p>' +
+        '<div class="btn-grup" style="justify-content:center"><button type="button" class="btn" id="cobaPemeliharaan">Coba lagi</button><span id="kontakPemeliharaan"></span></div></div>';
+      document.body.appendChild(layar);
+      document.documentElement.classList.add('sedang-pemeliharaan');
+      layar.querySelector('#cobaPemeliharaan').addEventListener('click', function () { location.reload(); });
+    }
+    layar.querySelector('#pesanPemeliharaan').textContent = info.pesan || '';
+    if (acara && acara.kontak_wa) layar.querySelector('#kontakPemeliharaan').innerHTML = '<a class="btn sekunder" target="_blank" rel="noopener" href="' + esc(linkWA(acara.kontak_wa, 'Halo panitia, saya ingin bertanya. ')) + '">Hubungi panitia via WA</a>';
+    if (!cekUlangPemeliharaan) cekUlangPemeliharaan = setInterval(function () { api('publik').catch(function () { }); }, 30000);
+    if (!acara) api('publik').catch(function () { }); // ambil kontak panitia
   }
 
   function rupiah(n) {
@@ -138,20 +176,34 @@
   function hapus(k) { try { localStorage.removeItem(k); } catch (e) { } }
 
   /** Mengompres gambar menjadi JPEG (sisi terpanjang 1400px). PDF dikirim apa adanya. */
-  function siapkanFile(file) {
+  var MAKS_BUKTI = 2.5 * 1024 * 1024;
+  var JENIS_EKSTENSI = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', pdf: 'application/pdf', heic: 'image/heic', heif: 'image/heif', webp: 'image/webp', gif: 'image/gif' };
+
+  /** Jenis file; beberapa HP tidak mengisi file.type (mis. file dari chat WA/Drive), jadi ditebak dari nama file */
+  function jenisFile(file) {
+    var t = String(file.type || '').toLowerCase();
+    if (t && t !== 'application/octet-stream') return t;
+    var m = /\.([a-z0-9]+)$/i.exec(file.name || '');
+    return m ? (JENIS_EKSTENSI[m[1].toLowerCase()] || '') : '';
+  }
+
+  function galatFile(kode, pesan, saran) { var e = new Error(pesan); e.kode = kode; e.saran = saran; return e; }
+  var SARAN_SCREENSHOT = 'Coba kirim <b>screenshot</b> bukti transfer dari aplikasi bank (bukan foto kamera), lalu pilih dari Galeri.';
+
+  var skripTermuat = {};
+  function muatSkrip(src) {
+    if (!skripTermuat[src]) skripTermuat[src] = new Promise(function (resolve, reject) {
+      var s = document.createElement('script'); s.src = src; s.onload = resolve;
+      s.onerror = function () { delete skripTermuat[src]; reject(new Error('Gagal memuat ' + src)); };
+      document.head.appendChild(s);
+    });
+    return skripTermuat[src];
+  }
+
+  /** Gambar → JPEG diperkecil (maks. 1400 px). Gagal jika browser tidak bisa membaca gambarnya. */
+  function kompresGambar(blob) {
     return new Promise(function (resolve, reject) {
-      if (!file) return reject(new Error('Pilih file terlebih dahulu.'));
-      var tipe = file.type;
-      if (tipe === 'application/pdf') {
-        if (file.size > 2.5 * 1024 * 1024) return reject(new Error('Ukuran PDF maksimal 2,5 MB.'));
-        var fr = new FileReader();
-        fr.onload = function () { resolve({ mime: tipe, data: String(fr.result).split(',')[1], pratinjau: null }); };
-        fr.onerror = function () { reject(new Error('File tidak terbaca.')); };
-        return fr.readAsDataURL(file);
-      }
-      if (!/^image\//.test(tipe)) return reject(new Error('Format file harus gambar (JPG/PNG) atau PDF.'));
-      var url = URL.createObjectURL(file);
-      var img = new Image();
+      var url = URL.createObjectURL(blob), img = new Image();
       img.onload = function () {
         var maks = 1400, w = img.naturalWidth, h = img.naturalHeight;
         var skala = Math.min(1, maks / Math.max(w, h));
@@ -162,12 +214,60 @@
         ctx.drawImage(img, 0, 0, c.width, c.height);
         URL.revokeObjectURL(url);
         var dataUrl = c.toDataURL('image/jpeg', 0.75);
+        if (dataUrl.length < 100) return reject(new Error('kanvas kosong'));
         resolve({ mime: 'image/jpeg', data: dataUrl.split(',')[1], pratinjau: dataUrl });
       };
-      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Gambar tidak terbaca. Coba format JPG/PNG.')); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('tidak terbaca')); };
       img.src = url;
     });
   }
+
+  function bacaBase64(file, mime) {
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onload = function () { resolve({ mime: mime, data: String(fr.result).split(',')[1], pratinjau: null, asli: true }); };
+      fr.onerror = function () { reject(galatFile('BACA_FILE', 'File tidak bisa dibaca dari HP ini.', SARAN_SCREENSHOT)); };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  /** Foto HEIC (iPhone/Samsung): Safari bisa membacanya langsung; browser lain memakai pengubah HEIC (dimuat hanya saat perlu) */
+  function siapkanHeic(file, mime) {
+    return kompresGambar(file).catch(function () {
+      return muatSkrip('vendor/heic2any.min.js').then(function () {
+        return window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+      }).then(function (hasil) { return kompresGambar(Array.isArray(hasil) ? hasil[0] : hasil); });
+    }).catch(function () {
+      // Tidak bisa diubah di HP ini: kirim apa adanya, panitia tetap bisa membukanya
+      if (file.size > MAKS_BUKTI) throw galatFile('UKURAN', 'Foto HEIC ini terlalu besar (' + (file.size / 1048576).toFixed(1) + ' MB) dan tidak bisa diperkecil di HP ini.', SARAN_SCREENSHOT);
+      return bacaBase64(file, mime);
+    });
+  }
+
+  function siapkanFile(file) {
+    if (!file) return Promise.reject(galatFile('KOSONG', 'Pilih file terlebih dahulu.'));
+    var tipe = jenisFile(file);
+    if (!tipe) return Promise.reject(galatFile('FORMAT', 'Jenis file ini tidak dikenali.', 'Kalau bukti tersimpan di chat WhatsApp atau Google Drive, simpan dulu ke Galeri lalu pilih dari Galeri. Atau ' + SARAN_SCREENSHOT.charAt(0).toLowerCase() + SARAN_SCREENSHOT.slice(1)));
+    if (tipe === 'application/pdf') {
+      if (file.size > MAKS_BUKTI) return Promise.reject(galatFile('UKURAN', 'Ukuran PDF maksimal 2,5 MB (file ini ' + (file.size / 1048576).toFixed(1) + ' MB).', SARAN_SCREENSHOT));
+      return bacaBase64(file, tipe).then(function (h) { h.asli = false; return h; });
+    }
+    if (tipe === 'image/heic' || tipe === 'image/heif') return siapkanHeic(file, tipe);
+    if (!/^image\//.test(tipe)) return Promise.reject(galatFile('FORMAT', 'Format file harus gambar (JPG/PNG) atau PDF.', SARAN_SCREENSHOT));
+    return kompresGambar(file).catch(function () {
+      throw galatFile('BACA_GAMBAR', 'Gambar ini tidak bisa dibaca oleh browser Anda.', SARAN_SCREENSHOT);
+    });
+  }
+
+  /** Ringkasan perangkat untuk laporan kendala (tanpa data pribadi) */
+  function infoPerangkat() {
+    var ua = navigator.userAgent || '';
+    var os = /iPhone|iPad|iPod/.test(ua) ? 'iPhone/iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'Mac' : 'Lainnya';
+    var app = /Instagram/.test(ua) ? 'aplikasi Instagram' : /FBAN|FBAV|FB_IAB/.test(ua) ? 'aplikasi Facebook' : /Line\//.test(ua) ? 'aplikasi LINE'
+      : /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /EdgA?\//.test(ua) ? 'Edge' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox/.test(ua) ? 'Firefox' : /Safari/.test(ua) ? 'Safari' : 'browser lain';
+    return os + ' · ' + app;
+  }
+  function dalamAplikasi() { return /Instagram|FBAN|FBAV|FB_IAB|Line\//.test(navigator.userAgent || ''); }
 
   function hitungMundur(target, el, selesai) {
     var d = keDate(target);
@@ -225,11 +325,12 @@
   function badgeVip(p) { return p && p.vip ? ' <span class="badge vip">' + esc(labelVip) + '</span>' : ''; }
 
   window.App = {
-    VERSI: '2026.11.28', // naikkan bersama semua halaman setiap rilis
+    VERSI: '2026.11.28.3', // naikkan bersama semua halaman setiap rilis
 
     api: api, rupiah: rupiah, keDate: keDate, fmtTanggal: fmtTanggal, fmtJam: fmtJam, fmtWaktu: fmtWaktu,
     esc: esc, formatKet: formatKet, param: param, $: $, $$: $$, toast: toast, salin: salin, badge: badge, LABEL_STATUS: LABEL_STATUS,
-    halaman: halaman, linkWA: linkWA, simpan: simpan, ambil: ambil, hapus: hapus, siapkanFile: siapkanFile,
+    halaman: halaman, linkWA: linkWA, simpan: simpan, ambil: ambil, hapus: hapus, siapkanFile: siapkanFile, jenisFile: jenisFile,
+    muatSkrip: muatSkrip, infoPerangkat: infoPerangkat, dalamAplikasi: dalamAplikasi,
     hitungMundur: hitungMundur, memuat: memuat, csv: csv, unduh: unduh,
     setLabelVip: setLabelVip, teksVip: teksVip,
     labelAnggota: labelAnggota, LABEL_JK: LABEL_JK, daftarOrang: daftarOrang, ringkasJK: ringkasJK, teksAnggota: teksAnggota, badgeVip: badgeVip

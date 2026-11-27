@@ -16,7 +16,7 @@
 
   <script src="config.js"></script>
   <script src="app.js"></script>
-  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.28'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
+  <script>/* Cek file situs sinkron */(function(){var tampil=function(m){var d=document.createElement('div');d.setAttribute('style','background:#b4423a;color:#fff;padding:14px 16px;font:600 15px/1.5 system-ui,sans-serif;text-align:center');d.textContent=m;document.body.insertBefore(d,document.body.firstChild);};if(!window.App||window.App.VERSI!=='2026.11.28.3'){tampil('Halaman belum bisa dipakai: file situs tidak sinkron (app.js berbeda versi). Panitia: unggah ulang SEMUA file folder web/ kecuali config.js.');}if(window.API_URL===undefined){tampil('Halaman belum bisa dipakai: config.js tidak ditemukan.');}})();</script>
   <script>
   (function () {
     var A = App, isi = A.$('#isi');
@@ -75,8 +75,11 @@
     }
 
     function isiUnggah() {
-      return '<label class="unggah" for="file" id="kotakUnggah"><div>📎 <b>Pilih foto/screenshot bukti transfer</b></div><small>JPG, PNG, atau PDF · maks. 2,5 MB</small><div id="pratinjau"></div></label>' +
-        '<input type="file" id="file" accept="image/*,application/pdf" hidden>' +
+      var h = '';
+      if (A.dalamAplikasi()) h += '<div class="banner warn" style="margin-bottom:12px">Halaman ini terbuka di dalam aplikasi (' + A.esc(A.infoPerangkat().split(' · ')[1]) + '). Jika Galeri tidak mau terbuka, ketuk <b>⋯</b> di pojok kanan atas lalu pilih <b>Buka di browser</b>.</div>';
+      return h + '<label class="unggah" for="file" id="kotakUnggah"><div>📎 <b>Pilih foto/screenshot bukti transfer</b></div><small>JPG, PNG, HEIC, atau PDF · maks. 2,5 MB · screenshot dari aplikasi bank paling mudah</small><div id="pratinjau"></div></label>' +
+        '<input type="file" id="file" accept="image/*,application/pdf,.heic,.heif" hidden>' +
+        '<div id="errFile" class="banner danger" hidden style="margin-top:12px"></div>' +
         '<button class="btn blok" id="kirim" style="margin-top:14px" disabled>Kirim Bukti Transfer</button>';
     }
 
@@ -88,6 +91,13 @@
       if (p.status === 'lunas' || p.status === 'hadir') {
         h += '<div class="card kartu-sukses"><div class="ikon-sukses">✓</div><h2>Pembayaran terverifikasi</h2><p>E-tiket Anda sudah terbit. Tunjukkan QR code-nya saat registrasi ulang.</p>';
         h += '<a class="btn blok" href="' + A.halaman('tiket.html', { t: p.token_tiket }) + '">Lihat E-Tiket</a></div>';
+        isi.innerHTML = h; return;
+      }
+      if ((p.status === 'kedaluwarsa' || p.status === 'batal') && p.pengganti) {
+        var linkBaru = A.halaman('bayar.html', { k: p.pengganti.kode, a: p.pengganti.akses });
+        h += '<div class="card"><div class="banner ok"><b>Anda punya pendaftaran yang lebih baru.</b><br>Link ini milik pendaftaran lama (' + A.esc(p.kode) + ') yang sudah tidak aktif. Nomor WhatsApp Anda terdaftar di pendaftaran <b>' + A.esc(p.pengganti.kode) + '</b> (' + A.esc(A.LABEL_STATUS[p.pengganti.status] || p.pengganti.status) + ').</div>';
+        h += '<a class="btn blok" href="' + A.esc(linkBaru) + '">Buka pendaftaran terbaru</a>';
+        h += '<p class="hint" style="margin-top:10px">Jika Anda sudah transfer untuk pendaftaran lama, hubungi panitia dan sertakan kedua kode registrasi.</p>' + kontak() + '</div>';
         isi.innerHTML = h; return;
       }
       if (p.status === 'kedaluwarsa') {
@@ -134,23 +144,41 @@
       }
     }
 
-    function kontak() {
+    function kontak(pesanTambahan) {
       if (!p.acara.kontak_wa) return '';
-      return '<a class="btn sekunder" target="_blank" rel="noopener" href="' + A.linkWA(p.acara.kontak_wa, 'Halo panitia, saya ' + p.nama + ' (kode ' + p.kode + '). ') + '">Hubungi panitia via WA</a>';
+      return '<a class="btn sekunder' + (pesanTambahan ? ' kecil' : '') + '" target="_blank" rel="noopener" href="' + A.linkWA(p.acara.kontak_wa, 'Halo panitia, saya ' + p.nama + ' (kode ' + p.kode + '). ' + (pesanTambahan || '')) + '">Hubungi panitia via WA</a>';
+    }
+
+    /** Pesan kendala tetap tampil (bukan toast yang hilang), lengkap dengan saran dan tombol bantuan */
+    function tampilErrFile(pesan, saran) {
+      var el = A.$('#errFile');
+      if (!el) { A.toast(pesan, true); return; }
+      el.innerHTML = '<b>' + A.esc(pesan) + '</b>' + (saran ? '<br>' + saran : '') +
+        (p.acara.kontak_wa ? '<br><span style="display:inline-block;margin-top:8px">Masih belum bisa? ' + kontak('Saya tidak bisa mengunggah bukti transfer. Pesan yang muncul: "' + pesan + '". ') + '</span>' : '');
+      el.hidden = false;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function lapor(pesan, f) {
+      A.api('laporGagal', { kode: kode, akses: akses, pesan: pesan, perangkat: A.infoPerangkat(),
+        file: f ? ((A.jenisFile(f) || 'jenis tidak diketahui') + ', ' + Math.round(f.size / 1024) + ' KB') : '' }).catch(function () { });
     }
 
     function pilihFile(e) {
       var f = e.target.files[0];
+      if (!f) return;
       fileSiap = null;
       A.$('#kirim').disabled = true;
+      A.$('#errFile').hidden = true;
       A.$('#pratinjau').innerHTML = '<div class="memuat" style="padding:10px">Menyiapkan file…</div>';
       A.siapkanFile(f).then(function (hasil) {
         fileSiap = hasil;
-        A.$('#pratinjau').innerHTML = hasil.pratinjau ? '<img src="' + hasil.pratinjau + '" alt="Pratinjau bukti">' : '<p style="margin-top:10px">📄 ' + A.esc(f.name) + '</p>';
+        A.$('#pratinjau').innerHTML = hasil.pratinjau ? '<img src="' + hasil.pratinjau + '" alt="Pratinjau bukti">'
+          : '<p style="margin-top:10px">📄 ' + A.esc(f.name) + (hasil.asli ? '<br><small class="muted">Foto akan dikirim apa adanya; panitia tetap bisa melihatnya.</small>' : '') + '</p>';
         A.$('#kirim').disabled = false;
       }).catch(function (err) {
         A.$('#pratinjau').innerHTML = '';
-        A.toast(err.message, true);
+        tampilErrFile(err.message, err.saran);
+        lapor(err.message, f);
       });
     }
 
@@ -164,8 +192,11 @@
           tampil(true); // kartu sukses di atas + gulir otomatis ke sana
         })
         .catch(function (err) {
-          A.toast(err.message, true);
           btn.disabled = false; btn.textContent = 'Kirim Bukti Transfer';
+          if (err.kode === 'KEDALUWARSA') { A.toast(err.message, true); muat(); return; }
+          var jaringan = /terhubung/i.test(err.message);
+          tampilErrFile(err.message, jaringan ? 'Pindah ke Wi-Fi atau tempat bersinyal kuat, tunggu sebentar, lalu klik <b>Kirim Bukti Transfer</b> lagi.' : 'Silakan coba sekali lagi.');
+          if (jaringan) lapor(err.message);
         });
     }
   })();

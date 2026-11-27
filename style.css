@@ -643,3 +643,15 @@ code { background: var(--primary-soft); padding: 1px 5px; border-radius: 4px; fo
 .sp-logo-pratinjau img { max-height: 80px; }
 @media (max-width: 760px) { .sp-logo-grid { grid-template-columns: 1fr; } }
 .lp-header a.lp-merek { color: var(--lp-krem); text-decoration: none; }
+
+/* Mode pemeliharaan */
+.sedang-pemeliharaan, .sedang-pemeliharaan body { overflow: hidden; }
+.layar-pemeliharaan { position: fixed; inset: 0; z-index: 1000; background: #FFF8EC; display: flex; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; }
+.kartu-pemeliharaan { max-width: 520px; width: 100%; background: #fff; border: 1px solid #E6DCC8; border-radius: 22px; padding: 36px 28px; text-align: center; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.kartu-pemeliharaan h1 { margin: 0; font-size: 1.7rem; color: #0B3B24; }
+.kartu-pemeliharaan p { margin: 0; line-height: 1.6; }
+.ikon-pemeliharaan { width: 72px; height: 72px; border-radius: 50%; background: #0B3B24; color: #F2B705; display: flex; align-items: center; justify-content: center; }
+.banner-uji-pemeliharaan { position: sticky; top: 0; z-index: 60; background: #7a5212; color: #fff; font: 600 14px/1.45 system-ui, sans-serif; padding: 8px 14px; text-align: center; }
+.banner-pemeliharaan-admin { background: var(--danger); color: #fff; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: center; font-weight: 600; }
+.banner-pemeliharaan-admin .btn { background: #fff; color: var(--danger); }
+.banner-pemeliharaan-admin[hidden] { display: none; }

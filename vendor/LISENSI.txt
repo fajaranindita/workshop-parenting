@@ -4,3 +4,6 @@ Library pihak ketiga yang disimpan di folder ini (agar situs tidak bergantung pa
   https://github.com/davidshimjs/qrcodejs
 - html5-qrcode.min.js — html5-qrcode v2.3.8 oleh Minhaz (mebjas), lisensi Apache-2.0.
   https://github.com/mebjas/html5-qrcode
+- heic2any.min.js — heic2any v0.0.4 oleh Alex Corvi, lisensi MIT (memuat libheif, lisensi LGPL-3.0,
+  tanpa modifikasi). Dipakai untuk membaca foto HEIC (iPhone/Samsung). Hanya dimuat saat file HEIC dipilih.
+  https://github.com/alexcorvi/heic2any · https://github.com/strukturag/libheif

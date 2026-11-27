@@ -1,5 +1,5 @@
 /* Dashboard panitia */
-window.ADMIN_VERSI = '2026.11.28';
+window.ADMIN_VERSI = '2026.11.28.3';
 (function () {
   'use strict';
   var A = App, $ = A.$, $$ = A.$$, esc = A.esc;
@@ -45,6 +45,9 @@ window.ADMIN_VERSI = '2026.11.28';
     $('#tabPengaturan').hidden = S.admin.peran !== 'koordinator';
     $('#tabLanding').hidden = S.admin.peran !== 'koordinator';
     $('#mBank').textContent = S.bank;
+    S.pemeliharaan = me.pemeliharaan || { aktif: false, pesan: '', bawaan: '' };
+    $('#btnPemeliharaan').hidden = S.admin.peran !== 'koordinator';
+    renderBannerPemeliharaan();
     if (!tanpaMuat) muatPeserta();
     else $('#tbPeserta').innerHTML = '<tr><td colspan="7">' + A.memuat() + '</td></tr>';
   }
@@ -131,9 +134,12 @@ window.ADMIN_VERSI = '2026.11.28';
     }).join('');
 
     var q = S.cari.toLowerCase().replace(/[.\s]/g, '');
+    // Nomor WA disimpan berawalan 62: ketikan 08…, +62…, atau 0812-… tetap ditemukan
+    var qWA = /^[+\d][\d-]*$/.test(q) ? q.replace(/[^\d]/g, '').replace(/^0/, '62') : '';
     var daftar = S.peserta.filter(function (p) {
       if (S.filter !== 'semua' && p.status !== S.filter) return false;
       if (!q) return true;
+      if (qWA.length >= 5 && String(p.wa).indexOf(qWA) >= 0) return true;
       return (p.nama + A.teksAnggota(p) + p.kode + p.wa + p.nominal + p.email + p.asal).toLowerCase().replace(/[.\s]/g, '').indexOf(q) >= 0;
     }).sort(function (a, b) {
       if (S.filter === 'menunggu_verifikasi') return (a.bukti_waktu || '').localeCompare(b.bukti_waktu || '');
@@ -241,8 +247,25 @@ window.ADMIN_VERSI = '2026.11.28';
     apiA('detail', { kode: kode }).then(function (r) {
       var p = r.peserta;
       perbaruiLokal(p);
+      S.diagDetail = { kode: p.kode, kendala: r.kendala || [], lain: r.lain || [] };
       renderDetail(p, r.bukti, r.peringatan);
     }).catch(function (e) { bukaModal('<div class="banner danger">' + esc(e.message) + '</div>'); });
+  }
+
+  /** Foto HEIC (dari iPhone/Samsung) diubah ke JPEG di browser admin agar bisa dilihat */
+  function tampilkanHeic(bukti) {
+    var tulis = function (html) { var el = $('#buktiHeic'); if (el) el.outerHTML = html; };
+    var unduh = '<a class="btn sekunder kecil" download="bukti.heic" href="data:' + esc(bukti.mime) + ';base64,' + bukti.data + '">Unduh file asli (HEIC)</a>';
+    A.muatSkrip('vendor/heic2any.min.js').then(function () {
+      var biner = atob(bukti.data), arr = new Uint8Array(biner.length);
+      for (var i = 0; i < biner.length; i++) arr[i] = biner.charCodeAt(i);
+      return window.heic2any({ blob: new Blob([arr], { type: bukti.mime }), toType: 'image/jpeg', quality: 0.9 });
+    }).then(function (hasil) {
+      var url = URL.createObjectURL(Array.isArray(hasil) ? hasil[0] : hasil);
+      tulis('<a href="' + url + '" target="_blank"><img class="bukti-img" src="' + url + '" alt="Bukti transfer"></a><p class="hint">Foto asli berformat HEIC. ' + unduh + '</p>');
+    }).catch(function () {
+      tulis('<div class="banner warn">Foto HEIC ini tidak bisa ditampilkan di browser ini. Unduh lalu buka di HP/Mac, atau minta peserta mengirim screenshot lewat WA.</div>' + unduh);
+    });
   }
 
   function renderDetail(p, bukti, peringatan) {
@@ -250,6 +273,17 @@ window.ADMIN_VERSI = '2026.11.28';
     var koor = S.admin.peran === 'koordinator';
     var h = '<h2>' + esc(p.nama) + ' ' + A.badge(p.status) + A.badgeVip(p) + '</h2>';
     if (peringatan) h += '<div class="banner warn">⚠ ' + esc(peringatan) + '</div>';
+    var diag = S.diagDetail && S.diagDetail.kode === p.kode ? S.diagDetail : { kendala: [], lain: [] };
+    if (diag.lain.length) {
+      h += '<div class="banner info">Nomor WA ini juga dipakai di: ' + diag.lain.map(function (x) {
+        return '<a href="#" data-buka="' + esc(x.kode) + '"><b>' + esc(x.kode) + '</b></a> (' + esc(A.LABEL_STATUS[x.status] || x.status) + ', ' + A.fmtWaktu(x.dibuat) + ')';
+      }).join(', ') + '. Pastikan peserta membuka link pendaftaran yang benar.</div>';
+    }
+    if (diag.kendala.length) {
+      h += '<div class="banner warn"><b>Kendala unggah yang tercatat:</b><ul style="margin:6px 0 0;padding-left:18px">' + diag.kendala.map(function (k) {
+        return '<li><small>' + A.fmtWaktu(k.waktu) + '</small> · ' + esc(k.detail) + '</li>';
+      }).join('') + '</ul></div>';
+    }
     h += '<div class="grid2"><div class="seksi"><dl class="dl">';
     h += '<dt>Kode</dt><dd>' + esc(p.kode) + '</dd>';
     h += '<dt>WhatsApp</dt><dd>' + esc(p.wa) + '</dd>';
@@ -277,6 +311,7 @@ window.ADMIN_VERSI = '2026.11.28';
     h += '<div class="seksi"><h3>Bukti transfer</h3>';
     if (!bukti) h += '<p class="muted">Belum ada bukti diunggah.</p>';
     else if (bukti.error) h += '<div class="banner warn">' + esc(bukti.error) + '</div>';
+    else if (/heic|heif/.test(bukti.mime)) h += '<div id="buktiHeic" class="muted">Membuka foto HEIC…</div>';
     else if (bukti.mime === 'application/pdf') h += '<iframe src="data:application/pdf;base64,' + bukti.data + '" style="width:100%;height:420px;border:1px solid var(--line);border-radius:10px"></iframe>';
     else h += '<a href="data:' + esc(bukti.mime) + ';base64,' + bukti.data + '" target="_blank"><img class="bukti-img" src="data:' + esc(bukti.mime) + ';base64,' + bukti.data + '" alt="Bukti transfer"></a>';
     if (p.bukti_waktu) h += '<p class="hint">Diunggah ' + A.fmtWaktu(p.bukti_waktu) + '</p>';
@@ -286,7 +321,7 @@ window.ADMIN_VERSI = '2026.11.28';
     var bisaVerif = ['menunggu_verifikasi', 'menunggu_bayar', 'ditolak', 'kedaluwarsa'].indexOf(p.status) >= 0;
     if (bisaVerif) {
       h += '<button class="btn" data-aksi="terima">✔ Terima pembayaran</button>';
-      if (p.status !== 'kedaluwarsa') h += '<button class="btn bahaya" data-aksi="tolak">✖ Tolak bukti</button>';
+      if (p.status !== 'kedaluwarsa' && p.ada_bukti) h += '<button class="btn bahaya" data-aksi="tolak">✖ Tolak bukti</button>';
     }
     if (p.status === 'lunas' || p.status === 'hadir') {
       h += '<a class="btn wa" target="_blank" rel="noopener" href="' + A.linkWA(p.wa, pesanTiket(p)) + '">Kirim e-tiket via WA</a>';
@@ -300,8 +335,13 @@ window.ADMIN_VERSI = '2026.11.28';
     }
     h += '</div>';
     if (p.status === 'kedaluwarsa') h += '<p class="hint">Pendaftaran ini sudah kedaluwarsa. Terima pembayaran hanya jika dana benar-benar sudah masuk ke rekening; sistem akan memeriksa sisa kuota terlebih dahulu.</p>';
+    else if (bisaVerif && !p.ada_bukti) h += '<p class="hint">Belum ada bukti. Jika peserta sudah transfer tetapi gagal mengunggah, minta bukti lewat WA, cocokkan nominal dengan mutasi rekening, lalu klik <b>Terima pembayaran</b>.</p>';
     h += '<div id="panelAksi"></div></div>';
     bukaModal(h);
+    $$('#modalIsi [data-buka]').forEach(function (a) {
+      a.addEventListener('click', function (e) { e.preventDefault(); bukaDetail(a.getAttribute('data-buka')); });
+    });
+    if (bukti && bukti.data && /heic|heif/.test(bukti.mime)) tampilkanHeic(bukti);
 
     $$('#modalIsi [data-aksi]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -1003,7 +1043,8 @@ window.ADMIN_VERSI = '2026.11.28';
     var q = S.sp.cari.toLowerCase().trim();
     var tampil = d.filter(function (x) {
       if (S.sp.filter !== 'semua' && x.status !== S.sp.filter) return false;
-      return !q || [x.instansi, x.nama, x.wa, x.paket, x.email, x.id].join(' ').toLowerCase().indexOf(q) >= 0;
+      var qWA = /^[+\d][\d\s-]*$/.test(q) ? q.replace(/[^\d]/g, '').replace(/^0/, '62') : '';
+      return !q || (qWA.length >= 5 && String(x.wa).indexOf(qWA) >= 0) || [x.instansi, x.nama, x.wa, x.paket, x.email, x.id].join(' ').toLowerCase().indexOf(q) >= 0;
     });
     $('#tbSponsor').innerHTML = tampil.length ? tampil.map(function (x) {
       return '<tr><td><small>' + A.fmtWaktu(x.waktu) + '</small></td><td><b>' + esc(x.paket) + '</b></td>' +
@@ -1072,7 +1113,7 @@ window.ADMIN_VERSI = '2026.11.28';
         esc((ambilJalur(P, jalur) || []).map(function (x) { return kunci.split(',').map(function (k) { return x[k] || ''; }).join(' | '); }).join('\n')) + '</textarea>';
     };
     var cek = function (jalur, label) { return '<label class="cek" style="margin:6px 0"><input type="checkbox" data-s-bool="' + jalur + '"' + (ambilJalur(P, jalur) ? ' checked' : '') + '> <span>' + label + '</span></label>'; };
-    var urlHalaman = A.halaman('sponsor.html');
+    var urlHalaman = A.halaman('sponsorship.html');
     var h = '<div class="card"><h2>Halaman sponsor</h2>';
     h += cek('aktif', '<b>Tampilkan halaman sponsor dan formulir minat</b>. Jika dimatikan, bilah bawah dan bagian kemitraan di landing page ikut hilang (logo sponsor tetap tampil).');
     h += '<p class="hint">Alamat halaman: <a href="' + esc(urlHalaman) + '" target="_blank" rel="noopener">' + esc(urlHalaman) + '</a></p>';
@@ -1125,7 +1166,7 @@ window.ADMIN_VERSI = '2026.11.28';
     $('#spSimpan').addEventListener('click', simpanAturSponsor);
     $('#spPratinjau').addEventListener('click', function () {
       A.simpan('ws_pratinjau_sponsor', kumpulkanAturSponsor());
-      window.open('sponsor.html?pratinjau=1', '_blank');
+      window.open('sponsorship.html?pratinjau=1', '_blank');
     });
   }
 
@@ -1252,12 +1293,56 @@ window.ADMIN_VERSI = '2026.11.28';
     });
   }
 
+  // ---------------- Mode pemeliharaan ----------------
+  function renderBannerPemeliharaan() {
+    var el = $('#bannerPemeliharaan'), aktif = S.pemeliharaan && S.pemeliharaan.aktif;
+    el.hidden = !aktif;
+    $('#btnPemeliharaan').textContent = aktif ? 'Pemeliharaan: AKTIF' : 'Pemeliharaan';
+    if (!aktif) { el.innerHTML = ''; return; }
+    el.innerHTML = '<span>Mode pemeliharaan AKTIF: pengunjung tidak bisa mendaftar, mengunggah bukti, atau mengisi formulir sponsor. E-tiket tetap bisa dibuka.</span>' +
+      (S.admin.peran === 'koordinator' ? '<button class="btn kecil" id="matikanCepat">Matikan sekarang</button>' : '');
+    var m = $('#matikanCepat');
+    if (m) m.addEventListener('click', function () { setPemeliharaan(false, null, m); });
+  }
+
+  function setPemeliharaan(aktif, pesan, btn) {
+    if (btn) { btn.disabled = true; }
+    var data = { aktif: aktif };
+    if (pesan !== null && pesan !== undefined) data.pesan = pesan;
+    return apiA('setPemeliharaan', data).then(function (r) {
+      S.pemeliharaan = r.pemeliharaan; renderBannerPemeliharaan();
+      A.toast(aktif ? 'Mode pemeliharaan dinyalakan. Pengunjung melihat layar pembaruan paling lambat 30 detik lagi.' : 'Mode pemeliharaan dimatikan. Situs kembali normal.');
+      if ($('#modal').classList.contains('tampil') && $('#pmPesan')) tutupModal();
+    }).catch(function (e) { A.toast(e.message, true); if (btn) btn.disabled = false; });
+  }
+
+  $('#btnPemeliharaan').addEventListener('click', function () {
+    var P = S.pemeliharaan || {};
+    var h = '<h2>Mode pemeliharaan ' + (P.aktif ? '<span class="badge st-ditolak">AKTIF</span>' : '<span class="badge">mati</span>') + '</h2>';
+    h += '<p>Nyalakan saat memperbarui situs (mengunggah file baru ke GitHub atau memasang Code.gs baru). Selama aktif:</p><ul style="margin:0 0 12px;padding-left:20px;line-height:1.7">' +
+      '<li>Pengunjung melihat layar <b>"Sedang ada pembaruan"</b> dengan pesan di bawah, dan halaman terbuka sendiri setelah dimatikan.</li>' +
+      '<li>Pendaftaran, unggah bukti, dan formulir sponsor ditutup sementara. Data yang sudah masuk aman.</li>' +
+      '<li><b>E-tiket tetap bisa dibuka</b>, dan dashboard serta check-in tetap berjalan.</li>' +
+      '<li>Anda dan panitia yang <b>sedang login di browser yang sama</b> tetap bisa membuka semua halaman untuk uji coba.</li></ul>';
+    h += '<label for="pmPesan">Pesan untuk pengunjung</label><textarea id="pmPesan" maxlength="300" placeholder="' + esc(P.bawaan || '') + '">' + esc(P.pesan || '') + '</textarea>';
+    h += '<div class="hint">Kosongkan untuk memakai pesan bawaan.</div>';
+    h += '<div class="btn-grup" style="margin-top:16px">' + (P.aktif
+      ? '<button class="btn" id="pmMatikan">Matikan pemeliharaan</button><button class="btn sekunder" id="pmSimpan">Simpan pesan saja</button>'
+      : '<button class="btn bahaya" id="pmNyalakan">Nyalakan pemeliharaan</button>') + '</div>';
+    h += '<p class="hint" style="margin-top:14px">Jika dashboard tidak bisa dibuka saat pembaruan, gunakan menu <b>Tiket Workshop → Mode pemeliharaan</b> di Google Sheet.</p>';
+    bukaModal(h);
+    var pesan = function () { return $('#pmPesan').value; };
+    if ($('#pmNyalakan')) $('#pmNyalakan').addEventListener('click', function () { setPemeliharaan(true, pesan(), this); });
+    if ($('#pmMatikan')) $('#pmMatikan').addEventListener('click', function () { setPemeliharaan(false, pesan(), this); });
+    if ($('#pmSimpan')) $('#pmSimpan').addEventListener('click', function () { setPemeliharaan(true, pesan(), this); });
+  });
+
   // ---------------- Log ----------------
   function muatLog() {
     $('#tbLog').innerHTML = '<tr><td colspan="5">' + A.memuat() + '</td></tr>';
     apiA('log').then(function (r) {
       $('#tbLog').innerHTML = r.log.length ? r.log.map(function (l) {
-        return '<tr><td><small>' + A.fmtWaktu(l.waktu) + '</small></td><td>' + esc(l.admin) + '</td><td>' + esc(l.aksi) + '</td><td>' + esc(l.kode) + '</td><td style="white-space:pre-line"><small>' + esc(l.detail) + '</small></td></tr>';
+        return '<tr><td><small>' + A.fmtWaktu(l.waktu) + '</small></td><td>' + esc(l.admin) + '</td><td>' + (l.aksi === 'unggah_gagal' ? '<span class="badge st-ditolak">gagal unggah</span>' : esc(l.aksi)) + '</td><td>' + esc(l.kode) + '</td><td style="white-space:pre-line"><small>' + esc(l.detail) + '</small></td></tr>';
       }).join('') : '<tr><td colspan="5" class="muted">Belum ada log.</td></tr>';
     }).catch(function (e) { A.toast(e.message, true); });
   }
